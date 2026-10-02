@@ -4127,23 +4127,33 @@ function shPopulateSchemes(){
   sel.innerHTML='<option value="">Pick scheme…</option>'+schemes.map(s=>`<option>${s}</option>`).join('');
 }
 
-function shPopulateClients(){
-  const data=getData();
-  const all=[...new Set([...(data.clients||[]),...(data.registrations||[]).map(r=>r.name||r.clientName)])].filter(Boolean).sort();
-  window._shAllClients=all;
-}
+function shPopulateClients(){ /* uses getMergedClients() live */ }
 
-function shFilterClients(val){
+let _shClientCloseTimer=null;
+function shFilterClients(q){
   const drop=document.getElementById('sh_clientDrop');
-  if(!val){ drop.style.display='none'; return; }
-  const matches=(window._shAllClients||[]).filter(c=>c.toLowerCase().startsWith(val.toLowerCase())).slice(0,8);
-  if(!matches.length){ drop.style.display='none'; return; }
-  drop.innerHTML=matches.map(c=>`<div class="client-opt" onmousedown="shPickClient('${c.replace(/'/g,"\\'")}')">${c}</div>`).join('');
+  if(!drop) return;
+  const clients=getMergedClients();
+  const query=q.trim().toLowerCase();
+  const filtered=query
+    ? clients.filter(c=>c.toLowerCase().startsWith(query)||c.toLowerCase().includes(query))
+    : clients;
+  if(!filtered.length){ drop.innerHTML='<div class="cnone">No matches</div>'; drop.style.display='block'; return; }
+  let html='',lastLetter='';
+  for(const c of filtered){
+    const letter=(c[0]||'#').toUpperCase();
+    if(letter!==lastLetter){ html+=`<div class="cletter">${letter}</div>`; lastLetter=letter; }
+    html+=`<div class="copt">${c.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>`;
+  }
+  drop.innerHTML=html;
   drop.style.display='block';
+  drop.querySelectorAll('.copt').forEach(el=>{
+    el.addEventListener('mousedown',e=>{ e.preventDefault(); shPickClient(el.textContent); });
+  });
 }
-function shOpenDrop(){ shFilterClients(document.getElementById('sh_client').value); }
-function shScheduleClose(){ setTimeout(()=>{ const d=document.getElementById('sh_clientDrop'); if(d) d.style.display='none'; },200); }
-function shPickClient(name){ document.getElementById('sh_client').value=name; document.getElementById('sh_clientDrop').style.display='none'; }
+function shOpenDrop(){ shFilterClients(document.getElementById('sh_client').value||''); }
+function shScheduleClose(){ _shClientCloseTimer=setTimeout(()=>{ const d=document.getElementById('sh_clientDrop'); if(d) d.style.display='none'; },200); }
+function shPickClient(name){ clearTimeout(_shClientCloseTimer); document.getElementById('sh_client').value=name; const d=document.getElementById('sh_clientDrop'); if(d) d.style.display='none'; }
 
 function shAddScheme(){
   const sel=document.getElementById('sh_schemeAdd');
@@ -8312,4 +8322,4 @@ setInterval(()=>{
 </script>
 </body>
 </html>
-<!-- BUILD: 2026-10-02 17:04:53 -->
+<!-- BUILD: 2026-10-02 17:11:09 -->
