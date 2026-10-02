@@ -3226,7 +3226,7 @@ ugM0UhDk3QXyL+T/BRgAyo7z4+am9cEAAAAASUVORK5CYII=" alt="URS Logo" style="height:4
       </div>
       <div style="overflow-x:auto">
         <table class="jobs-table" id="sh_jobsTable" style="table-layout:auto">
-          <thead><tr><th>Client</th><th>Scheme</th><th>Service &amp; Date</th><th>Region</th><th>Act</th><th>Cont</th><th>Notified</th><th></th></tr></thead>
+          <thead><tr><th>Client</th><th>Region</th><th>Service</th><th>Date</th><th>Scheme</th><th>Act</th><th>Cont</th><th>Notified</th><th></th></tr></thead>
           <tbody id="sh_jobsBody"></tbody>
         </table>
         <div id="sh_jobsEmpty" class="empty" style="display:none">No jobs yet. Assign one on the left.</div>
@@ -4102,20 +4102,28 @@ function renderSalah(){
   document.getElementById('sh_jobCount').textContent = jobs.length + ' job' + (jobs.length!==1?'s':'');
   if(!jobs.length){ tbody.innerHTML=''; empty.style.display='block'; return; }
   empty.style.display='none';
-  tbody.innerHTML = jobs.map((j,idx)=>`<tr style="background:${idx%2===0?'#fff':'#f7faf8'}">
-    <td><strong style="font-size:12px">${j.client}</strong>${j.notes?`<div style="font-size:9px;color:#aaa;margin-top:1px">${j.notes}</div>`:''}</td>
-    <td style="font-size:10px;color:#444;max-width:160px;word-break:break-word">${(j.schemes||[j.scheme||'']).filter(Boolean).join(', ')||'—'}</td>
-    <td style="white-space:nowrap"><span class="badge ${SBADGE[j.service]||'ot'}">${j.service}</span> <span style="font-size:10px;color:#555;margin-left:4px">${j.startDate}</span></td>
-    <td style="font-size:10px;color:#666">${j.region||'—'}</td>
-    <td style="text-align:center">${j.actualDays}</td>
-    <td style="text-align:center">${j.contractDays}</td>
-    <td style="text-align:center;font-size:11px">${j.salahNotified?'<span style="color:#16a34a;font-weight:700">✓</span>':'<span style="color:#aaa">—</span>'}</td>
-    <td style="white-space:nowrap">
-      <button class="btn-edit" onclick="shEditJob('${j.id}')">✏</button>
-      <button title="Re-notify Salah" onclick="shNotifyById('${j.id}')" style="background:#0d6efd;color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:11px;cursor:pointer">📧</button>
-      <button class="btn-danger" onclick="deleteJob('${j.id}')" style="margin-left:2px">✕</button>
-    </td>
-  </tr>`).join('');
+  tbody.innerHTML = jobs.map((j,idx)=>{
+    const bg=idx%2===0?'#fff':'#f0f7f2';
+    const td=`style="background:${bg};padding:7px 9px;border-bottom:1px solid #e8f0e8;font-size:11px;vertical-align:middle"`;
+    const [y,mo,d]=(j.startDate||'').split('-');
+    const fmtStart=d&&mo&&y?`${d}-${mo}-${y}`:(j.startDate||'—');
+    const schemes=(j.schemes||[j.scheme||'']).filter(Boolean).join(', ')||'—';
+    return `<tr>
+      <td ${td}><strong style="font-size:12px">${j.client}</strong>${j.notes?`<div style="font-size:9px;color:#aaa;margin-top:1px">${j.notes}</div>`:''}</td>
+      <td ${td} style="background:${bg};font-size:10px;color:#555">${j.region||'—'}</td>
+      <td ${td}><span class="badge ${SBADGE[j.service]||'ot'}">${j.service||'—'}</span></td>
+      <td ${td} style="background:${bg};font-size:11px;color:#333;white-space:nowrap">${fmtStart}</td>
+      <td ${td} style="background:${bg};font-size:10px;color:#444;max-width:150px;word-break:break-word">${schemes}</td>
+      <td ${td} style="background:${bg};text-align:center">${j.actualDays}</td>
+      <td ${td} style="background:${bg};text-align:center">${j.contractDays}</td>
+      <td ${td} style="background:${bg};text-align:center">${j.salahNotified?'<span style="color:#16a34a;font-weight:700">✓</span>':'<span style="color:#aaa">—</span>'}</td>
+      <td ${td} style="background:${bg};white-space:nowrap">
+        <button class="btn-edit" onclick="shEditJob('${j.id}')">✏</button>
+        <button title="Re-notify Salah" onclick="shNotifyById('${j.id}')" style="background:#0d6efd;color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:11px;cursor:pointer">📧</button>
+        <button class="btn-danger" onclick="shDeleteJob('${j.id}')" style="margin-left:2px">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
 }
 
 function shPopulateSchemes(){
@@ -4260,6 +4268,14 @@ function shNotifyById(id){
   const data=getData();
   const j=data.jobs.find(x=>x.id===id);
   if(j){ shNotify(j); shDownloadICS(j); }
+}
+async function shDeleteJob(id){
+  if(!confirm('Delete this job?')) return;
+  const data=getData();
+  data.jobs=data.jobs.filter(j=>j.id!==id);
+  await syncSave(data);
+  renderSalah();
+  renderCalendar();
 }
 
 function shDownloadICS(j){
@@ -6978,6 +6994,7 @@ function refreshAll(){
   renderReminder();
   renderAsheef();
   renderSimon();
+  renderSalah();
   renderDocs();
   renderLost();
   renderOds();
@@ -8327,4 +8344,4 @@ setInterval(()=>{
 </script>
 </body>
 </html>
-<!-- BUILD: 2026-10-02 17:19:23 -->
+<!-- BUILD: 2026-10-02 17:26:29 -->
