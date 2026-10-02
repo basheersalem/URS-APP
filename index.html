@@ -2533,6 +2533,26 @@ ugM0UhDk3QXyL+T/BRgAyo7z4+am9cEAAAAASUVORK5CYII=" alt="URS Logo" style="height:4
 <!-- NEW CLIENT REGISTRATION -->
 <div id="newclient" class="view" style="max-width:100%">
 
+  <!-- DESTINATION TOGGLE -->
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+    <span style="font-size:12px;font-weight:600;color:#374151">Save client to:</span>
+    <div style="display:flex;gap:6px">
+      <button id="nc_dest_pipeline" onclick="ncSetDest('pipeline')"
+        style="padding:5px 16px;border-radius:20px;border:2px solid #3b82f6;background:#eff6ff;color:#1d4ed8;font-size:12px;font-weight:600;cursor:pointer">
+        📋 Pipeline
+      </button>
+      <button id="nc_dest_ongoing" onclick="ncSetDest('ongoing')"
+        style="padding:5px 16px;border-radius:20px;border:2px solid #eab308;background:#fefce8;color:#854d0e;font-size:12px;font-weight:600;cursor:pointer">
+        🔄 Ongoing
+      </button>
+      <button id="nc_dest_certified" onclick="ncSetDest('certified')"
+        style="padding:5px 16px;border-radius:20px;border:2px solid #16a34a;background:#f0fdf4;color:#15803d;font-size:12px;font-weight:700;cursor:pointer;outline:3px solid #bbf7d0">
+        🏆 Certified
+      </button>
+    </div>
+    <input type="hidden" id="nc_destination" value="certified">
+  </div>
+
   <!-- PIPELINE BANNER -->
   <div class="nc-pipeline" id="nc_pipeline">
     <div class="nc-pip-step pip-active" onclick="ncSetStage('pre-cert')" data-stage="pre-cert">
@@ -5209,6 +5229,18 @@ let _ncEditId=null;   // null = new record, else ID of record being edited
 const NC_STAGE_ORDER=['pre-cert','stage1','stage2','certified','su1','su2','rc1'];
 
 // ── Pipeline ──────────────────────────────────────────────────
+function ncSetDest(dest){
+  document.getElementById('nc_destination').value=dest;
+  ['pipeline','ongoing','certified'].forEach(d=>{
+    const btn=document.getElementById('nc_dest_'+d);
+    if(!btn) return;
+    btn.style.outline='none';
+    btn.style.fontWeight='600';
+  });
+  const active=document.getElementById('nc_dest_'+dest);
+  if(active){ active.style.outline='3px solid '+(dest==='pipeline'?'#93c5fd':dest==='ongoing'?'#fde68a':'#bbf7d0'); active.style.fontWeight='700'; }
+}
+
 function ncSetStage(stage){
   document.getElementById('nc_stage').value=stage;
   const idx=NC_STAGE_ORDER.indexOf(stage);
@@ -5337,13 +5369,45 @@ async function saveNewClient(){
   };
   if(isEdit && !reg.createdAt) delete reg.createdAt;
   const data=getData();
+  const dest=document.getElementById('nc_destination')?.value||'certified';
   if(!data.clients.includes(name)) data.clients.push(name);
-  if(!data.registrations) data.registrations=[];
   if(isEdit){
-    const idx=data.registrations.findIndex(r=>r.id===_ncEditId);
-    if(idx>=0) data.registrations[idx]={...data.registrations[idx],...reg};
-    else data.registrations.push(reg);
+    // Edit: find in whichever array it lives in
+    if(!data.registrations) data.registrations=[];
+    const ri=data.registrations.findIndex(r=>r.id===_ncEditId);
+    if(ri>=0){ data.registrations[ri]={...data.registrations[ri],...reg}; }
+    else {
+      const pi=(data.pipeline||[]).findIndex(r=>r.id===_ncEditId);
+      if(pi>=0){ data.pipeline[pi]={...data.pipeline[pi],...reg}; }
+      else {
+        const oi=(data.ongoing||[]).findIndex(r=>r.id===_ncEditId);
+        if(oi>=0){ data.ongoing[oi]={...data.ongoing[oi],...reg}; }
+        else data.registrations.push(reg);
+      }
+    }
+  } else if(dest==='pipeline'){
+    if(!data.pipeline) data.pipeline=[];
+    const pObj={
+      id:reg.id, name:reg.name, standards:reg.schemes||[], leadSource:reg.leadSource||'Direct',
+      proposalRef:reg.quotationRef||reg.proposalRef||'', feeInit:parseFloat(reg.contractValue)||0,
+      region:reg.region, country:reg.country, contact:reg.contact, email:reg.email, phone:reg.phone,
+      ukRef:reg.ukRef, scope:reg.scope, status:'proposal',
+      proposalDate:new Date().toISOString().slice(0,10),
+      createdAt:Date.now(), revisions:[]
+    };
+    data.pipeline.push(pObj);
+  } else if(dest==='ongoing'){
+    if(!data.ongoing) data.ongoing=[];
+    const oObj={
+      ...reg, id:'ong_'+reg.id, stage:'ongoing',
+      standards:reg.schemes||[], schemes:reg.schemes||[],
+      auditType:reg.stage||'', auditor:reg.auditor||'', auditDate:'',
+      status:'pending_audit', contractSignedDate:new Date().toISOString().slice(0,10),
+      createdAt:Date.now()
+    };
+    data.ongoing.push(oObj);
   } else {
+    if(!data.registrations) data.registrations=[];
     data.registrations.push(reg);
   }
   await syncSave(data);
@@ -5968,6 +6032,34 @@ function moveToOngoing(id){
   alert(`✅ ${c.name} moved to Ongoing.\n\nAccounts should receive notification to issue the advance invoice.`);
   renderPipeline(); renderOngoing();
 }
+function pipelineToCertified(id){
+  const data=getData();
+  const c=data.pipeline.find(x=>x.id===id);
+  if(!c){ alert('Client not found'); return; }
+  const certDate=prompt(`Certificate issue date for ${c.name} (YYYY-MM-DD):`, new Date().toISOString().slice(0,10));
+  if(!certDate) return;
+  if(!confirm(`Move ${c.name} directly to Certified?\nCert Date: ${certDate}`)) return;
+  const cd=new Date(certDate+'T00:00:00');
+  const addM=(d,m)=>{ const r=new Date(d); r.setMonth(r.getMonth()+m); return r.toISOString().slice(0,10); };
+  const certRec={
+    ...c, id:'cert_'+Date.now(), stage:'certified',
+    certDate, su1Date:addM(cd,11), su2Date:addM(cd,23),
+    rc1Date:addM(cd,33), expiryDate:addM(cd,36),
+    nextAuditType:'SU1', nextAuditDue:addM(cd,11),
+    certReleasedAt:Date.now()
+  };
+  if(!data.registrations) data.registrations=[];
+  data.registrations.push(certRec);
+  data.pipeline=data.pipeline.filter(x=>x.id!==id);
+  if(c.leadSource==='Simon Joseph'){
+    if(!data.simonCommissions) data.simonCommissions=[];
+    data.simonCommissions.push({id:'com_'+Date.now(),clientId:certRec.id,clientName:c.name,phase:'Initial Cert',certDate,status:'due',amount:0,createdAt:Date.now()});
+  }
+  saveLocal(data); syncSave(data).catch(()=>{});
+  alert(`✅ ${c.name} certified!\n\nSU1: ${certRec.su1Date}\nSU2: ${certRec.su2Date}\nExpiry: ${certRec.expiryDate}`);
+  renderPipeline(); renderCertified(); renderDashboard();
+}
+
 function renderPipeline(){
   const data=getData();
   const q=(document.getElementById('pip_search')||{}).value||'';
@@ -6006,6 +6098,7 @@ function renderPipeline(){
         <button class="btn-sm btn-view" onclick="openProfile('pip_${c.id}','${c.name.replace(/'/g,"\\'")}')">👤</button>
         <button class="btn-sm btn-view" onclick="openPipelineModal('${c.id}')">✏️</button>
         <button class="btn-sm btn-move" onclick="moveToOngoing('${c.id}')">→ Ongoing</button>
+        <button class="btn-sm btn-move" onclick="pipelineToCertified('${c.id}')" style="background:#15803d;color:#fff">→ Certified</button>
         <button class="btn-sm btn-del" onclick="deletePipelineClient('${c.id}')">✕</button>
       </td>
     </tr>`;
@@ -6059,7 +6152,7 @@ function renderOngoing(){
       <td>
         <button class="btn-sm btn-view" onclick="editOngoing('${c.id}')">✏️</button>
         <button class="btn-sm btn-view" onclick="openProfile('ong_${c.id}','${c.name.replace(/'/g,"\\'")}')">👤</button>
-        ${c.status==='completed'?`<button class="btn-sm btn-move" onclick="triggerCertRelease('${c.id}')">🏆 Release</button>`:''}
+        <button class="btn-sm btn-move" onclick="triggerCertRelease('${c.id}')" style="background:#15803d;color:#fff" title="Release Certificate">→ Certified</button>
         <button class="btn-sm btn-del" onclick="markAsLost('${c.id}')" title="Mark as Lost">❌</button>
       </td>
     </tr>`;
@@ -8344,4 +8437,4 @@ setInterval(()=>{
 </script>
 </body>
 </html>
-<!-- BUILD: 2026-10-02 17:26:29 -->
+<!-- BUILD: 2026-10-02 17:40:31 -->
