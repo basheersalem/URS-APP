@@ -66,10 +66,16 @@ header .sub{font-size:10px;opacity:.65;margin-top:2px}
 .sb-label{flex:1;font-size:12px}
 .sb-star{background:none;border:none;color:rgba(255,255,255,.22);cursor:pointer;font-size:12px;padding:0 2px;line-height:1;transition:.12s;flex-shrink:0}
 .sb-star:hover{color:#fbbf24}.sb-star.on{color:#fbbf24}
-.sb-arrows{display:flex;flex-direction:column;flex-shrink:0;margin-right:2px}
-.sb-arrows button{background:none;border:none;color:rgba(255,255,255,.28);cursor:pointer;font-size:8px;padding:0 2px;line-height:1.1;transition:.12s}
-.sb-arrows button:hover{color:white}
+.sb-drag{background:none;border:none;color:rgba(255,255,255,.25);cursor:grab;font-size:13px;padding:0 3px;line-height:1;flex-shrink:0;touch-action:none}
+.sb-drag:active{cursor:grabbing;color:rgba(255,255,255,.6)}
+.sb-item.drag-over{border-top:2px solid #4fc3f7}
 .sb-divider{border:none;border-top:1px solid rgba(255,255,255,.1);margin:6px 12px}
+#sb-toggle{position:fixed;left:215px;top:50%;transform:translateY(-50%);z-index:150;background:#1a5c2a;border:none;color:white;width:16px;height:40px;border-radius:0 6px 6px 0;cursor:pointer;font-size:9px;padding:0;transition:left .2s;display:flex;align-items:center;justify-content:center}
+#sb-toggle:hover{background:#27ae60}
+body.sb-collapsed #sidebar{display:none}
+body.sb-collapsed #sb-toggle{left:0;border-radius:0 6px 6px 0}
+body.sb-collapsed #backup_reminder{margin-left:0}
+body.sb-collapsed .view{margin-left:0}
 #backup_reminder{margin-left:215px;margin-top:66px}
 .view{display:none;padding:16px;margin-left:215px;margin-top:66px}
 .view.active{display:block}
@@ -2053,6 +2059,7 @@ ugM0UhDk3QXyL+T/BRgAyo7z4+am9cEAAAAASUVORK5CYII=" alt="URS Logo" style="height:4
   </div>
 </div>
 <div id="sidebar"></div>
+<button id="sb-toggle" onclick="toggleSidebar()" title="Collapse / expand sidebar">◀</button>
 
 <!-- DASHBOARD -->
 <div id="dashboard" class="view active">
@@ -3762,7 +3769,6 @@ let _sbFavs=['dashboard','pipeline','ongoing','certified'];
 function _sbLoad(){ try{ const v=JSON.parse(localStorage.getItem(_SB_KEY)); if(Array.isArray(v)&&v.length) _sbFavs=v; }catch(e){} }
 function _sbSave(){ try{ localStorage.setItem(_SB_KEY,JSON.stringify(_sbFavs)); }catch(e){} }
 function sbToggleFav(id,e){ if(e) e.stopPropagation(); if(_sbFavs.includes(id)) _sbFavs=_sbFavs.filter(x=>x!==id); else _sbFavs.push(id); _sbSave(); renderSidebar(); }
-function sbMove(id,dir,e){ if(e) e.stopPropagation(); const i=_sbFavs.indexOf(id); const j=i+dir; if(i<0||j<0||j>=_sbFavs.length) return; [_sbFavs[i],_sbFavs[j]]=[_sbFavs[j],_sbFavs[i]]; _sbSave(); renderSidebar(); }
 function renderSidebar(){
   const sb=document.getElementById('sidebar'); if(!sb) return;
   const cur=document.querySelector('.view.active')?.id||'dashboard';
@@ -3770,13 +3776,9 @@ function renderSidebar(){
   const favHtml=_sbFavs.map((id,i)=>{
     const s=map[id]; if(!s) return '';
     const act=cur===id?' active':'';
-    const canU=i>0, canD=i<_sbFavs.length-1;
-    return `<div class="sb-item${act}" onclick="showView('${id}',null)">
+    return `<div class="sb-item${act}" draggable="true" data-sbid="${id}" data-sbi="${i}" onclick="showView('${id}',null)">
+      <span class="sb-drag" onmousedown="event.stopPropagation()" title="Drag to reorder">⠿</span>
       <span class="sb-icon">${s.icon}</span><span class="sb-label">${s.label}</span>
-      <div class="sb-arrows">
-        <button onclick="sbMove('${id}',-1,event)" ${canU?'':'disabled'} title="Move up">▲</button>
-        <button onclick="sbMove('${id}',1,event)" ${canD?'':'disabled'} title="Move down">▼</button>
-      </div>
       <button class="sb-star on" onclick="sbToggleFav('${id}',event)" title="Remove from favourites">★</button>
     </div>`;
   }).join('');
@@ -3788,6 +3790,24 @@ function renderSidebar(){
     </div>`;
   }).join('');
   sb.innerHTML=`<div class="sb-title">⭐ Favourites</div>${favHtml}<hr class="sb-divider"><div class="sb-title">All Sections</div>${allHtml}`;
+  // Wire up drag-to-reorder on fav items
+  let dragSrc=null;
+  sb.querySelectorAll('.sb-item[draggable]').forEach(el=>{
+    el.addEventListener('dragstart',e=>{ dragSrc=el; el.style.opacity='.4'; e.dataTransfer.effectAllowed='move'; });
+    el.addEventListener('dragend',()=>{ sb.querySelectorAll('.sb-item').forEach(x=>{x.style.opacity='';x.classList.remove('drag-over');}); });
+    el.addEventListener('dragover',e=>{ e.preventDefault(); e.dataTransfer.dropEffect='move'; if(el!==dragSrc) el.classList.add('drag-over'); });
+    el.addEventListener('dragleave',()=>el.classList.remove('drag-over'));
+    el.addEventListener('drop',e=>{ e.preventDefault(); if(!dragSrc||dragSrc===el) return;
+      const from=parseInt(dragSrc.dataset.sbi); const to=parseInt(el.dataset.sbi);
+      _sbFavs.splice(to,0,_sbFavs.splice(from,1)[0]);
+      _sbSave(); renderSidebar();
+    });
+  });
+}
+function toggleSidebar(){
+  document.body.classList.toggle('sb-collapsed');
+  const btn=document.getElementById('sb-toggle');
+  if(btn) btn.textContent=document.body.classList.contains('sb-collapsed')?'▶':'◀';
 }
 document.addEventListener('DOMContentLoaded',()=>{ _sbLoad(); renderSidebar(); });
 
@@ -8556,4 +8576,4 @@ setInterval(()=>{
 </script>
 </body>
 </html>
-<!-- BUILD: 2026-10-02 19:22:28 -->
+<!-- BUILD: 2026-10-02 19:29:29 -->
