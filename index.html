@@ -3147,14 +3147,14 @@ ugM0UhDk3QXyL+T/BRgAyo7z4+am9cEAAAAASUVORK5CYII=" alt="URS Logo" style="height:4
 </div>
 
 <!-- ═══ SALAH JOB PLANNER ═══ -->
-<div id="salah" class="view" style="padding:16px;max-width:960px;margin:0 auto">
+<div id="salah" class="view" style="padding:16px">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
     <div>
       <h2 style="margin:0;color:#134520;font-size:18px">🧑‍💼 Salah Hafez — Job Planner</h2>
       <div style="font-size:11px;color:#666;margin-top:2px">Assign audit jobs · auto-notifies Salah by email with calendar invite</div>
     </div>
   </div>
-  <div style="display:grid;grid-template-columns:320px 1fr;gap:14px;align-items:start">
+  <div style="display:grid;grid-template-columns:270px 1fr;gap:14px;align-items:start">
     <!-- FORM -->
     <div class="card">
       <div class="card-header" id="salahFormTitle">➕ Assign Job to Salah</div>
@@ -3225,8 +3225,8 @@ ugM0UhDk3QXyL+T/BRgAyo7z4+am9cEAAAAASUVORK5CYII=" alt="URS Logo" style="height:4
         <span id="sh_jobCount" style="font-size:10px;opacity:.8"></span>
       </div>
       <div style="overflow-x:auto">
-        <table class="jobs-table" id="sh_jobsTable">
-          <thead><tr><th>Client</th><th>Scheme</th><th>Svc</th><th>Region</th><th>Start</th><th>Act</th><th>Cont</th><th>Notified</th><th></th></tr></thead>
+        <table class="jobs-table" id="sh_jobsTable" style="table-layout:auto">
+          <thead><tr><th>Client</th><th>Scheme</th><th>Service &amp; Date</th><th>Region</th><th>Act</th><th>Cont</th><th>Notified</th><th></th></tr></thead>
           <tbody id="sh_jobsBody"></tbody>
         </table>
         <div id="sh_jobsEmpty" class="empty" style="display:none">No jobs yet. Assign one on the left.</div>
@@ -3638,7 +3638,7 @@ const MSHORT=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov',
 const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const SBADGE={'Stage 1':'s1','Stage 2':'s2','SU1':'su1','SU2':'su2','RC1':'rc1','Training':'tr','Other':'ot'};
 
-let currentYear=2026, currentMonth=8; // Sep 2026
+const _now=new Date(); let currentYear=_now.getFullYear(), currentMonth=_now.getMonth();
 
 function toStr(d){ const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${day}`; }
 function daysInMonth(y,m){ return new Date(y,m+1,0).getDate(); }
@@ -4102,18 +4102,17 @@ function renderSalah(){
   document.getElementById('sh_jobCount').textContent = jobs.length + ' job' + (jobs.length!==1?'s':'');
   if(!jobs.length){ tbody.innerHTML=''; empty.style.display='block'; return; }
   empty.style.display='none';
-  tbody.innerHTML = jobs.map(j=>`<tr>
-    <td><strong>${j.client}</strong>${j.notes?`<div style="font-size:9px;color:#aaa">${j.notes}</div>`:''}</td>
-    <td style="font-size:10px;color:#444;max-width:110px;word-break:break-word">${(j.schemes||[j.scheme||'']).filter(Boolean).join(', ')||'—'}</td>
-    <td><span class="badge ${SBADGE[j.service]||'ot'}">${j.service}</span></td>
+  tbody.innerHTML = jobs.map((j,idx)=>`<tr style="background:${idx%2===0?'#fff':'#f7faf8'}">
+    <td><strong style="font-size:12px">${j.client}</strong>${j.notes?`<div style="font-size:9px;color:#aaa;margin-top:1px">${j.notes}</div>`:''}</td>
+    <td style="font-size:10px;color:#444;max-width:160px;word-break:break-word">${(j.schemes||[j.scheme||'']).filter(Boolean).join(', ')||'—'}</td>
+    <td style="white-space:nowrap"><span class="badge ${SBADGE[j.service]||'ot'}">${j.service}</span> <span style="font-size:10px;color:#555;margin-left:4px">${j.startDate}</span></td>
     <td style="font-size:10px;color:#666">${j.region||'—'}</td>
-    <td>${j.startDate}</td>
     <td style="text-align:center">${j.actualDays}</td>
     <td style="text-align:center">${j.contractDays}</td>
     <td style="text-align:center;font-size:11px">${j.salahNotified?'<span style="color:#16a34a;font-weight:700">✓</span>':'<span style="color:#aaa">—</span>'}</td>
     <td style="white-space:nowrap">
       <button class="btn-edit" onclick="shEditJob('${j.id}')">✏</button>
-      <button title="Re-notify Salah" onclick="shNotify(${JSON.stringify(JSON.stringify(j))})" style="background:#0d6efd;color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:11px;cursor:pointer">📧</button>
+      <button title="Re-notify Salah" onclick="shNotifyById('${j.id}')" style="background:#0d6efd;color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:11px;cursor:pointer">📧</button>
       <button class="btn-danger" onclick="deleteJob('${j.id}')" style="margin-left:2px">✕</button>
     </td>
   </tr>`).join('');
@@ -4255,6 +4254,12 @@ Best regards,
 URS Oman Operations`
   );
   window.location.href=`mailto:${SALAH_EMAIL}?cc=${OP_EMAIL}&subject=${subject}&body=${body}`;
+}
+
+function shNotifyById(id){
+  const data=getData();
+  const j=data.jobs.find(x=>x.id===id);
+  if(j){ shNotify(j); shDownloadICS(j); }
 }
 
 function shDownloadICS(j){
@@ -8322,4 +8327,4 @@ setInterval(()=>{
 </script>
 </body>
 </html>
-<!-- BUILD: 2026-10-02 17:11:09 -->
+<!-- BUILD: 2026-10-02 17:19:23 -->
