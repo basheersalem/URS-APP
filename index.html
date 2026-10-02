@@ -2191,10 +2191,10 @@ ugM0UhDk3QXyL+T/BRgAyo7z4+am9cEAAAAASUVORK5CYII=" alt="URS Logo" style="height:4
       <table class="mod-tbl" id="cert_tbl">
         <thead><tr>
           <th>Client Name</th><th>UK Ref</th><th>Schemes</th>
-          <th>Cert Date</th><th>Cert Health</th><th>Upcoming Activity</th>
-          <th>Auditor</th><th>Status</th><th>Actions</th>
+          <th>Cert Date</th><th>Cert Health</th><th>Activity</th><th>Due Date</th><th>Completed</th>
+          <th>Status</th><th>Actions</th>
         </tr></thead>
-        <tbody id="cert_tbody"><tr><td colspan="9" class="empty">Loading...</td></tr></tbody>
+        <tbody id="cert_tbody"><tr><td colspan="10" class="empty">Loading...</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -5921,7 +5921,7 @@ function renderCertified(){
   if(stgF) regs=regs.filter(r=>(r.stage||r.certStage||'').toLowerCase()===stgF.toLowerCase());
   const tbody=document.getElementById('cert_tbody');
   if(!tbody) return;
-  if(!regs.length){ tbody.innerHTML=`<tr><td colspan="9" class="empty">No certified clients${q||schF||stgF?' match your filter':''}</td></tr>`; return; }
+  if(!regs.length){ tbody.innerHTML=`<tr><td colspan="10" class="empty">No certified clients${q||schF||stgF?' match your filter':''}</td></tr>`; return; }
 
   // ── IMS grouping: merge records with same ukRef (or same name+certDate) ──
   const imsMap={};
@@ -5965,7 +5965,7 @@ function renderCertified(){
       const monthsLeft=Math.max(0,Math.round((totalDays-elapsed)/30.44));
       healthHtml=`<div class="health-wrap"><div class="health-bar"><div class="health-fill ${hcls}" style="width:${pct.toFixed(0)}%"></div></div><span style="font-size:9px;color:#888">${monthsLeft}m left</span></div>`;
     }
-    // Upcoming
+    // Upcoming — split into 3 columns: Activity | Due Date | Completed
     let upcomingLbl='',upcomingDate='',upcomingColor='#aaa';
     if(r.nextAuditType&&r.nextAuditDue){ upcomingLbl=r.nextAuditType; upcomingDate=r.nextAuditDue; }
     if(upcomingDate){
@@ -5973,14 +5973,15 @@ function renderCertified(){
       upcomingColor=diff<0?'#ef4444':diff<=60?'#f59e0b':'#1a5c2a';
     }
     const _cid=(r.id||r.clientId||name||'').replace(/'/g,"\\'");
-    const upcomingCell=upcomingLbl
-      ?`<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
-          <span style="background:${upcomingColor}1a;color:${upcomingColor};padding:2px 7px;border-radius:10px;font-size:9px;font-weight:700">${upcomingLbl}</span>
-          <span style="font-size:10px;color:#888">${fmtDate(upcomingDate)}</span>
-          <button onclick="conductAudit('${_cid}')" style="background:#d1fae5;color:#065f46;border:none;border-radius:5px;padding:2px 7px;font-size:9px;cursor:pointer;font-weight:600;white-space:nowrap;flex-shrink:0">✓ Done</button>
-        </div>`
+    const activityCell=upcomingLbl
+      ?`<span style="background:${upcomingColor}1a;color:${upcomingColor};padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700">${upcomingLbl}</span>`
       :'<span style="color:#aaa">—</span>';
-    const auditor=r.auditor||r.leadAuditor||'—';
+    const dueDateCell=upcomingDate
+      ?`<span style="font-size:10px;color:${upcomingColor};font-weight:${upcomingColor==='#ef4444'?'700':'400'}">${fmtDate(upcomingDate)}</span>`
+      :'<span style="color:#aaa">—</span>';
+    const completedCell=upcomingLbl
+      ?`<button onclick="conductAudit('${_cid}')" style="background:#065f46;color:#fff;border:none;border-radius:6px;padding:3px 10px;font-size:10px;cursor:pointer;font-weight:600;white-space:nowrap">Completed</button>`
+      :'<span style="color:#aaa">—</span>';
     const status=r.status||'Active';
     const stColor={Active:'#dcfce7',Suspended:'#fef9c3',Withdrawn:'#fee2e2'};
     const stTxt={Active:'#15803d',Suspended:'#854d0e',Withdrawn:'#991b1b'};
@@ -5995,8 +5996,9 @@ function renderCertified(){
       })()}</td>
       <td style="font-size:10px">${fmtDate(certDate)||'—'}</td>
       <td>${healthHtml}</td>
-      <td>${upcomingCell}</td>
-      <td style="font-size:10px">${auditor}</td>
+      <td style="text-align:center">${activityCell}</td>
+      <td style="text-align:center">${dueDateCell}</td>
+      <td style="text-align:center">${completedCell}</td>
       <td><span style="background:${stColor[status]||'#f3f4f6'};color:${stTxt[status]||'#374151'};padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700">${status}</span></td>
       <td>
         <button class="btn-sm btn-view" onclick="openProfile('${r.id||r.clientId||name}','${name.replace(/'/g,"\\'")}')">👤 Profile</button>
@@ -6004,7 +6006,7 @@ function renderCertified(){
         <button class="btn-sm btn-del" onclick="markAsLost('${r.id||r.clientId||''}')" title="Mark as Lost">❌</button>
       </td>
     </tr>`);
-    }catch(e){ rows.push(`<tr><td colspan="9" style="color:#aaa;font-size:10px;padding:6px 10px">⚠️ ${r.name||r.clientName||'Unknown'} — display error: ${e.message}</td></tr>`); }
+    }catch(e){ rows.push(`<tr><td colspan="10" style="color:#aaa;font-size:10px;padding:6px 10px">⚠️ ${r.name||r.clientName||'Unknown'} — display error: ${e.message}</td></tr>`); }
   });
   tbody.innerHTML=rows.join('');
 }
@@ -6378,19 +6380,17 @@ function deleteLostClient(id){
 // ── Mark audit as conducted & advance lifecycle ───────────────
 function conductAudit(clientId){
   const data=getData();
-  // Search registrations first (Certified tab source), then data.certified
   let store='registrations';
   let idx=(data.registrations||[]).findIndex(r=>(r.id||r.clientId||r.name||'')===clientId);
   if(idx<0){ idx=(data.certified||[]).findIndex(r=>(r.id||r.clientId||r.name||'')===clientId); store='certified'; }
   if(idx<0){ alert('Client not found. Try refreshing the page.'); return; }
   const r={...data[store][idx]};
   const rawType=(r.nextAuditType||'SU1').toUpperCase();
-  // Normalise RC/RC1/RC2 → RC1
   const auditType=rawType.startsWith('RC')?'RC1':rawType;
   const todayStr=toStr(new Date());
-  const input=prompt(`Mark ${auditType} as conducted\nClient: ${r.name||r.clientName||clientId}\n\nEnter conducted date (YYYY-MM-DD):`, todayStr);
-  if(!input) return;
-  if(!input.match(/^\d{4}-\d{2}-\d{2}$/)){ alert('Invalid format. Use YYYY-MM-DD (e.g. 2026-10-01).'); return; }
+  const clientName=r.name||r.clientName||clientId;
+  if(!confirm(`Mark ${auditType} as completed for:\n${clientName}\n\nDate: ${fmtDate(todayStr)}`)) return;
+  const input=todayStr;
   const addMo=(base,m)=>{ const x=new Date(base+'T00:00:00'); x.setMonth(x.getMonth()+m); return toStr(x); };
   const certAnchor=r.certDate||input;
   if(auditType==='SU1'){
@@ -6403,8 +6403,8 @@ function conductAudit(clientId){
     if(!r.rc1Date) r.rc1Date=addMo(certAnchor,33);
     r.nextAuditType='RC1';
     r.nextAuditDue=r.rc1Date;
-  } else { // RC1 — new 3-year certification cycle
-    r.lastRcDate=input;  // preserve when this RC was conducted
+  } else { // RC1 — new 3-year cycle begins
+    r.lastRcDate=input;
     r.certDate=input;
     r.certExpiry=addMo(input,36);
     r.expiryDate=r.certExpiry;
@@ -6417,7 +6417,7 @@ function conductAudit(clientId){
   data[store][idx]=r;
   saveLocal(data); syncSave(data).catch(()=>{});
   renderCertified(); renderDashboard();
-  cdbToast(`✓ ${auditType} conducted ${fmtDate(input)}  ·  Next: ${r.nextAuditType} → ${fmtDate(r.nextAuditDue)}`);
+  cdbToast(`✅ ${auditType} completed ${fmtDate(input)}  ·  Next: ${r.nextAuditType} → ${fmtDate(r.nextAuditDue)}`);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -8041,3 +8041,4 @@ setInterval(()=>{
 </script>
 </body>
 </html>
+<!-- BUILD: 2026-10-02 15:57:10 -->
