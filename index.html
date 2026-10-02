@@ -2191,7 +2191,7 @@ ugM0UhDk3QXyL+T/BRgAyo7z4+am9cEAAAAASUVORK5CYII=" alt="URS Logo" style="height:4
       <table class="mod-tbl" id="cert_tbl">
         <thead><tr>
           <th>Client Name</th><th>UK Ref</th><th>Schemes</th>
-          <th>Cert Date</th><th>Cert Health</th><th>Activity</th><th>Due Date</th><th>Completed</th>
+          <th>Cert Date</th><th>Cert Health</th><th>Last Conducted</th><th>Next Due</th><th style="width:36px"></th>
           <th>Status</th><th>Actions</th>
         </tr></thead>
         <tbody id="cert_tbody"><tr><td colspan="10" class="empty">Loading...</td></tr></tbody>
@@ -5965,22 +5965,40 @@ function renderCertified(){
       const monthsLeft=Math.max(0,Math.round((totalDays-elapsed)/30.44));
       healthHtml=`<div class="health-wrap"><div class="health-bar"><div class="health-fill ${hcls}" style="width:${pct.toFixed(0)}%"></div></div><span style="font-size:9px;color:#888">${monthsLeft}m left</span></div>`;
     }
-    // Upcoming — split into 3 columns: Activity | Due Date | Completed
+    // ── Last Conducted | Next Due | ✓ button ──
     let upcomingLbl='',upcomingDate='',upcomingColor='#aaa';
     if(r.nextAuditType&&r.nextAuditDue){ upcomingLbl=r.nextAuditType; upcomingDate=r.nextAuditDue; }
     if(upcomingDate){
       const diff=Math.round((new Date(upcomingDate)-today)/86400000);
       upcomingColor=diff<0?'#ef4444':diff<=60?'#f59e0b':'#1a5c2a';
     }
+    // Determine last conducted activity + date
+    const nextUp=(upcomingLbl||'SU1').toUpperCase();
+    let lastLbl='',lastDate='';
+    if(nextUp==='SU1'){
+      lastLbl='Initial Cert'; lastDate=r.certDate||certDate;
+    } else if(nextUp==='SU2'){
+      lastLbl='SU1'; lastDate=r.su1Date||'';
+    } else if(nextUp==='RC1'){
+      lastLbl='SU2'; lastDate=r.su2Date||'';
+    } else {
+      lastLbl='RC1'; lastDate=r.rc1Date||r.lastRcDate||'';
+    }
     const _cid=(r.id||r.clientId||name||'').replace(/'/g,"\\'");
-    const activityCell=upcomingLbl
-      ?`<span style="background:${upcomingColor}1a;color:${upcomingColor};padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700">${upcomingLbl}</span>`
-      :'<span style="color:#aaa">—</span>';
-    const dueDateCell=upcomingDate
-      ?`<span style="font-size:10px;color:${upcomingColor};font-weight:${upcomingColor==='#ef4444'?'700':'400'}">${fmtDate(upcomingDate)}</span>`
-      :'<span style="color:#aaa">—</span>';
-    const completedCell=upcomingLbl
-      ?`<button onclick="conductAudit('${_cid}')" style="background:#065f46;color:#fff;border:none;border-radius:6px;padding:3px 10px;font-size:10px;cursor:pointer;font-weight:600;white-space:nowrap">Completed</button>`
+    const lastCell=lastLbl
+      ?`<div style="display:flex;align-items:center;gap:5px">
+          <span style="background:#f0fdf4;color:#166534;padding:2px 7px;border-radius:10px;font-size:9px;font-weight:700">${lastLbl}</span>
+          ${lastDate?`<span style="font-size:9px;color:#9ca3af">${fmtDate(lastDate)}</span>`:''}
+        </div>`
+      :'<span style="color:#aaa;font-size:10px">—</span>';
+    const nextCell=upcomingLbl
+      ?`<div style="display:flex;align-items:center;gap:5px">
+          <span style="background:${upcomingColor}18;color:${upcomingColor};padding:2px 7px;border-radius:10px;font-size:9px;font-weight:700">${upcomingLbl}</span>
+          <span style="font-size:9px;color:${upcomingColor};font-weight:${upcomingColor==='#ef4444'?'700':'400'}">${fmtDate(upcomingDate)}</span>
+        </div>`
+      :'<span style="color:#aaa;font-size:10px">—</span>';
+    const tickCell=upcomingLbl
+      ?`<button onclick="conductAudit('${_cid}')" title="Mark ${upcomingLbl} as conducted" style="background:#065f46;color:#fff;border:none;border-radius:6px;width:28px;height:28px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">✓</button>`
       :'<span style="color:#aaa">—</span>';
     const status=r.status||'Active';
     const stColor={Active:'#dcfce7',Suspended:'#fef9c3',Withdrawn:'#fee2e2'};
@@ -5996,9 +6014,9 @@ function renderCertified(){
       })()}</td>
       <td style="font-size:10px">${fmtDate(certDate)||'—'}</td>
       <td>${healthHtml}</td>
-      <td style="text-align:center">${activityCell}</td>
-      <td style="text-align:center">${dueDateCell}</td>
-      <td style="text-align:center">${completedCell}</td>
+      <td>${lastCell}</td>
+      <td>${nextCell}</td>
+      <td style="text-align:center">${tickCell}</td>
       <td><span style="background:${stColor[status]||'#f3f4f6'};color:${stTxt[status]||'#374151'};padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700">${status}</span></td>
       <td>
         <button class="btn-sm btn-view" onclick="openProfile('${r.id||r.clientId||name}','${name.replace(/'/g,"\\'")}')">👤 Profile</button>
@@ -6389,7 +6407,7 @@ function conductAudit(clientId){
   const auditType=rawType.startsWith('RC')?'RC1':rawType;
   const todayStr=toStr(new Date());
   const clientName=r.name||r.clientName||clientId;
-  if(!confirm(`Mark ${auditType} as completed for:\n${clientName}\n\nDate: ${fmtDate(todayStr)}`)) return;
+  if(!confirm(`Mark ${auditType} as conducted for:\n${clientName}\n\nDate: ${fmtDate(todayStr)}`)) return;
   const input=todayStr;
   const addMo=(base,m)=>{ const x=new Date(base+'T00:00:00'); x.setMonth(x.getMonth()+m); return toStr(x); };
   const certAnchor=r.certDate||input;
@@ -8041,4 +8059,4 @@ setInterval(()=>{
 </script>
 </body>
 </html>
-<!-- BUILD: 2026-10-02 15:57:10 -->
+<!-- BUILD: 2026-10-02 16:09:03 -->
