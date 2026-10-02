@@ -2025,7 +2025,7 @@ ugM0UhDk3QXyL+T/BRgAyo7z4+am9cEAAAAASUVORK5CYII=" alt="URS Logo" style="height:4
     </div>
   </div>
   <div style="display:flex;align-items:center">
-    <button id="install-btn" onclick="installApp()">⬇ Install App</button>
+    <button id="install-btn" onclick="installApp()" style="display:none">⬇ Install App</button>
     <div class="month-nav" style="margin-left:16px">
       <button onclick="prevMonth()">‹</button>
       <span id="monthLabel"></span>
@@ -5671,27 +5671,18 @@ let _deferredPrompt=null;
 window.addEventListener('beforeinstallprompt',e=>{
   e.preventDefault();
   _deferredPrompt=e;
-  // Show install button prominently when prompt is ready
   const btn=document.getElementById('install-btn');
-  if(btn){ btn.style.background='#f39c12'; btn.textContent='⬇ Install App'; }
+  if(btn) btn.style.display='inline-flex';
 });
 window.addEventListener('appinstalled',()=>{
   const btn=document.getElementById('install-btn');
-  if(btn){ btn.textContent='✅ Installed'; btn.disabled=true; }
+  if(btn) btn.style.display='none';
   _deferredPrompt=null;
 });
 function installApp(){
-  if(_deferredPrompt){
-    _deferredPrompt.prompt();
-    _deferredPrompt.userChoice.then(r=>{ _deferredPrompt=null; });
-  } else {
-    // Trigger Chrome's built-in install flow via keyboard shortcut simulation
-    // or guide user to address bar install icon
-    // App not yet installable — reload to let SW register and prompt activate
-    if(confirm('App install prompt not ready yet.\n\nClick OK to reload the page — the Install button will activate after reload.')){
-      location.reload();
-    }
-  }
+  if(!_deferredPrompt) return;
+  _deferredPrompt.prompt();
+  _deferredPrompt.userChoice.then(()=>{ _deferredPrompt=null; const btn=document.getElementById('install-btn'); if(btn) btn.style.display='none'; });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -8517,4 +8508,4 @@ setInterval(()=>{
 </script>
 </body>
 </html>
-<!-- BUILD: 2026-10-02 18:45:28 -->
+<!-- BUILD: 2026-10-02 18:50:21 -->
