@@ -2056,7 +2056,6 @@ ugM0UhDk3QXyL+T/BRgAyo7z4+am9cEAAAAASUVORK5CYII=" alt="URS Logo" style="height:4
   <button onclick="showView('reminder',this)">📧 Reminders</button>
   <button onclick="showView('asheef',this)">💼 Asheef</button>
   <button onclick="showView('simon',this)">🤝 Simon</button>
-  <button onclick="showView('clientsdb',this)">🗃️ Clients DB</button>
   <button onclick="showView('ods',this)">🔍 ODS</button>
   <button onclick="showView('training',this)">🎓 Training</button>
   <button onclick="showView('docs',this)">📄 Documents</button>
@@ -2859,49 +2858,6 @@ ugM0UhDk3QXyL+T/BRgAyo7z4+am9cEAAAAASUVORK5CYII=" alt="URS Logo" style="height:4
 </div>
 
 <!-- CLIENTS DB -->
-<div id="clientsdb" class="view">
-  <div class="card">
-    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
-      🗃 Clients Database
-      <div style="display:flex;gap:8px;align-items:center">
-        <span id="cdb_count" style="font-size:10px;opacity:.75"></span>
-        <button onclick="exportClientsCSV()" style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);color:white;padding:3px 10px;border-radius:6px;font-size:11px;cursor:pointer">⬇ CSV</button>
-      </div>
-    </div>
-    <div class="card-body">
-      <div class="cdb-toolbar">
-        <input type="text" id="cdb_search" placeholder="🔍 Search name, ref, contact, scheme…" oninput="renderClientsDB()">
-        <select id="cdb_fScheme" onchange="renderClientsDB()"><option value="">All Schemes</option></select>
-        <select id="cdb_fStage" onchange="renderClientsDB()">
-          <option value="">All Stages</option>
-          <option>pre-cert</option><option>stage1</option><option>stage2</option>
-          <option>certified</option><option>su1</option><option>su2</option><option>rc1</option>
-        </select>
-        <select id="cdb_fStatus" onchange="renderClientsDB()">
-          <option value="">All Statuses</option>
-          <option>Pre-Cert</option><option>Active</option><option>Pending</option>
-          <option>Suspended</option><option>Withdrawn</option>
-        </select>
-        <select id="cdb_fPay" onchange="renderClientsDB()">
-          <option value="">All Payments</option>
-          <option>Paid</option><option>Partial</option><option>Pending</option>
-        </select>
-      </div>
-      <div style="overflow-x:auto">
-        <table class="cdb-tbl">
-          <thead><tr>
-            <th style="width:18px"></th>
-            <th>Client Name</th><th>UK Ref</th>
-            <th>Schemes</th><th>Upcoming Activity</th><th>Status</th>
-            <th>Cert Date</th><th>Expiry</th>
-            <th>Contract (OMR)</th><th>Payment</th><th>Auditor</th><th>Actions</th>
-          </tr></thead>
-          <tbody id="cdbList"><tr><td colspan="12" style="text-align:center;padding:20px;color:#aaa">No clients yet — add via New Client tab</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- SETTINGS -->
 <div id="settings" class="view">
@@ -3655,7 +3611,6 @@ function showView(id,btn){
     else if(id==='certified') renderCertified();
     else if(id==='accounts') renderAccounts();
     else if(id==='dashboard') renderDashboard();
-    else if(id==='clientsdb') renderClientsDB();
     else if(id==='lost') renderLost();
     else if(id==='ods') renderOds();
     else if(id==='training') renderTraining();
@@ -6020,6 +5975,7 @@ function renderCertified(){
       <td><span style="background:${stColor[status]||'#f3f4f6'};color:${stTxt[status]||'#374151'};padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700">${status}</span></td>
       <td>
         <button class="btn-sm btn-view" onclick="openProfile('${r.id||r.clientId||name}','${name.replace(/'/g,"\\'")}')">👤 Profile</button>
+        <button class="btn-sm btn-view" onclick="openCertFolder('${name.replace(/'/g,"\\'")}')">📂</button>
         <button class="btn-sm btn-view" onclick="editClient('${r.id||r.clientId||''}');showView('newclient',document.querySelector('nav button[onclick*=newclient]'))">✏️</button>
         <button class="btn-sm btn-del" onclick="markAsLost('${r.id||r.clientId||''}')" title="Mark as Lost">❌</button>
       </td>
@@ -7826,6 +7782,19 @@ function cdbToast(msg){
   setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),400);},3000);
 }
 
+async function openCertFolder(clientName){
+  const folderPath=`/Users/Basheer/Library/CloudStorage/OneDrive2-Personal/URS Oman/Certified Clients/${clientName}`;
+  try {
+    const resp=await fetch('http://localhost:9876/open',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({path:folderPath, clientName})
+    });
+    if(resp.ok){ cdbToast('📂 Opened: '+clientName); return; }
+  } catch(e){ /* server not running */ }
+  prompt('OneDrive folder path:', folderPath);
+}
+
 async function cdbOpenDestination(docId, clientName){
   // Find the doc
   const data=getData();
@@ -8059,4 +8028,4 @@ setInterval(()=>{
 </script>
 </body>
 </html>
-<!-- BUILD: 2026-10-02 16:09:03 -->
+<!-- BUILD: 2026-10-02 16:42:20 -->
