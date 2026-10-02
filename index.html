@@ -2049,6 +2049,7 @@ ugM0UhDk3QXyL+T/BRgAyo7z4+am9cEAAAAASUVORK5CYII=" alt="URS Logo" style="height:4
   <button onclick="showView('certified',this)">🟢 Certified</button>
   <button onclick="showView('lost',this)">❌ Lost</button>
   <button onclick="showView('accounts',this)">💳 Accounts</button>
+  <button onclick="showView('salah',this)">🧑‍💼 Salah</button>
   <button onclick="showView('planner',this)">✏️ Job Planner</button>
   <button onclick="showView('calendar',this)">📅 Calendar</button>
   <button onclick="showView('summary',this)">📈 Summary</button>
@@ -3145,6 +3146,95 @@ ugM0UhDk3QXyL+T/BRgAyo7z4+am9cEAAAAASUVORK5CYII=" alt="URS Logo" style="height:4
   <div id="lost_list"></div>
 </div>
 
+<!-- ═══ SALAH JOB PLANNER ═══ -->
+<div id="salah" class="view" style="padding:16px;max-width:960px;margin:0 auto">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+    <div>
+      <h2 style="margin:0;color:#134520;font-size:18px">🧑‍💼 Salah Hafez — Job Planner</h2>
+      <div style="font-size:11px;color:#666;margin-top:2px">Assign audit jobs · auto-notifies Salah by email with calendar invite</div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:320px 1fr;gap:14px;align-items:start">
+    <!-- FORM -->
+    <div class="card">
+      <div class="card-header" id="salahFormTitle">➕ Assign Job to Salah</div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
+        <input type="hidden" id="sh_editId">
+        <div class="form-row">
+          <label>Client</label>
+          <div class="client-wrap">
+            <input type="text" id="sh_client" placeholder="Type name or first letter…" autocomplete="off"
+              oninput="shFilterClients(this.value)" onfocus="shOpenDrop()" onblur="shScheduleClose()">
+            <div id="sh_clientDrop" class="client-drop" style="display:none"></div>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Scheme(s)</label>
+          <div class="scheme-tag-wrap">
+            <div id="sh_schemeTags" class="stags"></div>
+            <div class="scheme-add-row">
+              <select id="sh_schemeAdd"><option value="">Pick scheme…</option></select>
+              <button type="button" onclick="shAddScheme()" style="padding:4px 10px;background:#1a5c2a;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:12px">+ Add</button>
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Service</label>
+          <select id="sh_service">
+            <option value="">Select…</option>
+            <option>Stage 1</option><option>Stage 2</option><option>SU1</option><option>SU2</option><option>RC1</option><option>Training</option><option>Other</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Region</label>
+          <select id="sh_region">
+            <option value="">Select region…</option>
+            <option>Muscat</option><option>Sohar</option><option>Barka</option>
+            <option>Salalah (Dhofar)</option><option>Nizwa (Al Dakhiliyah)</option>
+            <option>Sur (Al Sharqiyah)</option><option>Ibri (Al Dhahirah)</option>
+            <option>Buraymi</option><option>Khasab (Musandam)</option>
+            <option>Haima (Al Wusta)</option><option>Duqm</option>
+            <option>Rustaq</option><option>Saham</option><option>Liwa</option><option>Shinas</option>
+            <option>Outside Oman</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Start Date</label>
+          <input type="date" id="sh_start">
+        </div>
+        <div class="form-row two-col">
+          <div><label>Actual Days</label><input type="number" id="sh_actual" min="1" max="31" placeholder="e.g. 2"></div>
+          <div><label>Contract Days</label><input type="number" id="sh_contract" min="1" max="31" placeholder="e.g. 3"></div>
+        </div>
+        <div class="form-row">
+          <label>Notes</label>
+          <input type="text" id="sh_notes" placeholder="optional">
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="saveSalahJob(false)" style="flex:1">💾 Save</button>
+          <button class="btn btn-primary" onclick="saveSalahJob(true)" style="flex:1;background:#0d6efd">📧 Save &amp; Notify</button>
+          <button class="btn" onclick="shClearForm()" style="background:#f1f3f4;flex:0 0 auto">✕</button>
+        </div>
+        <div id="sh_msg" style="font-size:11px;display:none;margin-top:4px"></div>
+      </div>
+    </div>
+    <!-- JOB LIST -->
+    <div class="card">
+      <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+        <span>📋 Salah's Jobs</span>
+        <span id="sh_jobCount" style="font-size:10px;opacity:.8"></span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="jobs-table" id="sh_jobsTable">
+          <thead><tr><th>Client</th><th>Scheme</th><th>Svc</th><th>Region</th><th>Start</th><th>Act</th><th>Cont</th><th>Notified</th><th></th></tr></thead>
+          <tbody id="sh_jobsBody"></tbody>
+        </table>
+        <div id="sh_jobsEmpty" class="empty" style="display:none">No jobs yet. Assign one on the left.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ ODS PRE-ASSESS ═══ -->
 <div id="ods" class="view" style="padding:16px;max-width:1000px;margin:0 auto">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
@@ -3612,6 +3702,7 @@ function showView(id,btn){
     else if(id==='accounts') renderAccounts();
     else if(id==='dashboard') renderDashboard();
     else if(id==='lost') renderLost();
+    else if(id==='salah') renderSalah();
     else if(id==='ods') renderOds();
     else if(id==='training') renderTraining();
     else refreshAll();
@@ -3992,6 +4083,199 @@ async function deleteJob(id){
   await syncSave(data);
   refreshAll();
 }
+// ═══════════════════════════════════════════════════════════════
+//  SALAH JOB PLANNER
+// ═══════════════════════════════════════════════════════════════
+const SALAH_EMAIL = 'Auditors.oman@urs-me.om';
+const OP_EMAIL    = 'Operation.oman@urs-me.om';
+
+let _shSchemes = [];
+
+function renderSalah(){
+  shPopulateSchemes();
+  shPopulateClients();
+  const data = getData();
+  const jobs = [...(data.jobs||[])].filter(j=>(j.auditors||[j.auditor]).some(a=>a&&a.toLowerCase()==='salah'))
+                                   .sort((a,b)=>a.startDate.localeCompare(b.startDate));
+  const tbody = document.getElementById('sh_jobsBody');
+  const empty = document.getElementById('sh_jobsEmpty');
+  document.getElementById('sh_jobCount').textContent = jobs.length + ' job' + (jobs.length!==1?'s':'');
+  if(!jobs.length){ tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  tbody.innerHTML = jobs.map(j=>`<tr>
+    <td><strong>${j.client}</strong>${j.notes?`<div style="font-size:9px;color:#aaa">${j.notes}</div>`:''}</td>
+    <td style="font-size:10px;color:#444;max-width:110px;word-break:break-word">${(j.schemes||[j.scheme||'']).filter(Boolean).join(', ')||'—'}</td>
+    <td><span class="badge ${SBADGE[j.service]||'ot'}">${j.service}</span></td>
+    <td style="font-size:10px;color:#666">${j.region||'—'}</td>
+    <td>${j.startDate}</td>
+    <td style="text-align:center">${j.actualDays}</td>
+    <td style="text-align:center">${j.contractDays}</td>
+    <td style="text-align:center;font-size:11px">${j.salahNotified?'<span style="color:#16a34a;font-weight:700">✓</span>':'<span style="color:#aaa">—</span>'}</td>
+    <td style="white-space:nowrap">
+      <button class="btn-edit" onclick="shEditJob('${j.id}')">✏</button>
+      <button title="Re-notify Salah" onclick="shNotify(${JSON.stringify(JSON.stringify(j))})" style="background:#0d6efd;color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:11px;cursor:pointer">📧</button>
+      <button class="btn-danger" onclick="deleteJob('${j.id}')" style="margin-left:2px">✕</button>
+    </td>
+  </tr>`).join('');
+}
+
+function shPopulateSchemes(){
+  const data=getData();
+  const sel=document.getElementById('sh_schemeAdd');
+  if(!sel) return;
+  const schemes=data.schemes||['ISO 9001:2015 (UKAS)','ISO 14001:2015 (UKAS)','ISO 45001:2018 (UKAS)','ISO 50001:2018 (UKAS)','ISO 22000:2018','ISO 27001:2022'];
+  sel.innerHTML='<option value="">Pick scheme…</option>'+schemes.map(s=>`<option>${s}</option>`).join('');
+}
+
+function shPopulateClients(){
+  const data=getData();
+  const all=[...new Set([...(data.clients||[]),...(data.registrations||[]).map(r=>r.name||r.clientName)])].filter(Boolean).sort();
+  window._shAllClients=all;
+}
+
+function shFilterClients(val){
+  const drop=document.getElementById('sh_clientDrop');
+  if(!val){ drop.style.display='none'; return; }
+  const matches=(window._shAllClients||[]).filter(c=>c.toLowerCase().startsWith(val.toLowerCase())).slice(0,8);
+  if(!matches.length){ drop.style.display='none'; return; }
+  drop.innerHTML=matches.map(c=>`<div class="client-opt" onmousedown="shPickClient('${c.replace(/'/g,"\\'")}')">${c}</div>`).join('');
+  drop.style.display='block';
+}
+function shOpenDrop(){ shFilterClients(document.getElementById('sh_client').value); }
+function shScheduleClose(){ setTimeout(()=>{ const d=document.getElementById('sh_clientDrop'); if(d) d.style.display='none'; },200); }
+function shPickClient(name){ document.getElementById('sh_client').value=name; document.getElementById('sh_clientDrop').style.display='none'; }
+
+function shAddScheme(){
+  const sel=document.getElementById('sh_schemeAdd');
+  if(sel.value && !_shSchemes.includes(sel.value)){ _shSchemes.push(sel.value); shRenderSchemeTags(); sel.value=''; }
+}
+function shRenderSchemeTags(){
+  document.getElementById('sh_schemeTags').innerHTML=_shSchemes.map((s,i)=>
+    `<span class="stag">${s}<button type="button" onclick="_shSchemes.splice(${i},1);shRenderSchemeTags()" style="background:none;border:none;cursor:pointer;color:#666;margin-left:3px">×</button></span>`
+  ).join('');
+}
+
+function shClearForm(){
+  ['sh_editId','sh_client','sh_notes'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  ['sh_service','sh_region'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  ['sh_actual','sh_contract','sh_start'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  _shSchemes=[];
+  shRenderSchemeTags();
+  document.getElementById('salahFormTitle').textContent='➕ Assign Job to Salah';
+  const msg=document.getElementById('sh_msg'); if(msg) msg.style.display='none';
+}
+
+function shEditJob(id){
+  const data=getData();
+  const j=data.jobs.find(x=>x.id===id);
+  if(!j) return;
+  document.getElementById('sh_editId').value=j.id;
+  document.getElementById('sh_client').value=j.client;
+  document.getElementById('sh_service').value=j.service||'';
+  document.getElementById('sh_region').value=j.region||'';
+  document.getElementById('sh_start').value=j.startDate||'';
+  document.getElementById('sh_actual').value=j.actualDays||'';
+  document.getElementById('sh_contract').value=j.contractDays||'';
+  document.getElementById('sh_notes').value=j.notes||'';
+  _shSchemes=[...(j.schemes||[j.scheme||''].filter(Boolean))];
+  shRenderSchemeTags();
+  document.getElementById('salahFormTitle').textContent='✏️ Edit Job';
+  document.getElementById('sh_client').focus();
+}
+
+async function saveSalahJob(notify){
+  const client=document.getElementById('sh_client').value.trim();
+  const schSel=document.getElementById('sh_schemeAdd');
+  if(schSel&&schSel.value&&!_shSchemes.includes(schSel.value)){ _shSchemes.push(schSel.value); shRenderSchemeTags(); }
+  const schemes=[..._shSchemes];
+  const service=document.getElementById('sh_service').value;
+  const region=document.getElementById('sh_region').value;
+  const startDate=document.getElementById('sh_start').value;
+  const actualDays=parseInt(document.getElementById('sh_actual').value)||0;
+  const contractDays=parseInt(document.getElementById('sh_contract').value)||actualDays;
+  const notes=document.getElementById('sh_notes').value.trim();
+  const editId=document.getElementById('sh_editId').value;
+  if(!client||!service||!startDate||!actualDays){
+    const m=document.getElementById('sh_msg');
+    m.textContent='⚠ Fill in Client, Service, Start Date and Actual Days.'; m.style.color='#ea4335'; m.style.display='block';
+    setTimeout(()=>m.style.display='none',3000); return;
+  }
+  const data=getData();
+  const job={id:editId||(Date.now().toString(36)+Math.random().toString(36).slice(2,5)),
+    client,schemes,service,region,auditors:['Salah'],auditor:'Salah',startDate,actualDays,contractDays,notes,
+    salahNotified:notify?true:undefined};
+  if(editId){
+    const idx=data.jobs.findIndex(j=>j.id===editId);
+    if(idx>=0){ data.jobs[idx]={...data.jobs[idx],...job,id:editId}; }
+  } else {
+    data.jobs.push(job);
+    if(!data.clients.includes(client)) data.clients.push(client);
+  }
+  await syncSave(data);
+  if(notify){ shNotify(job); shDownloadICS(job); }
+  shClearForm();
+  const m=document.getElementById('sh_msg');
+  m.textContent=notify?'✓ Saved · Email draft opened · .ics downloaded':'✓ Saved!';
+  m.style.color='#34a853'; m.style.display='block';
+  setTimeout(()=>m.style.display='none',3500);
+  renderSalah();
+  refreshAll();
+}
+
+function shNotify(jobOrStr){
+  const j=typeof jobOrStr==='string'?JSON.parse(jobOrStr):jobOrStr;
+  const schemes=(j.schemes||[j.scheme||'']).filter(Boolean).join(', ')||'—';
+  const subject=encodeURIComponent(`Audit Assignment – ${j.client} – ${j.service} – ${j.startDate}`);
+  const body=encodeURIComponent(
+`Dear Salah,
+
+Please find below your audit assignment details:
+
+Client        : ${j.client}
+Standard(s)   : ${schemes}
+Service       : ${j.service}
+Region        : ${j.region||'—'}
+Start Date    : ${j.startDate}
+Actual Days   : ${j.actualDays}
+Contract Days : ${j.contractDays}${j.notes?'\nNotes         : '+j.notes:''}
+
+Please confirm receipt.
+
+Best regards,
+URS Oman Operations`
+  );
+  window.location.href=`mailto:${SALAH_EMAIL}?cc=${OP_EMAIL}&subject=${subject}&body=${body}`;
+}
+
+function shDownloadICS(j){
+  const schemes=(j.schemes||[j.scheme||'']).filter(Boolean).join(', ')||'';
+  // Parse startDate YYYY-MM-DD
+  const [y,m,d]=j.startDate.split('-').map(Number);
+  const dtStart=`${j.startDate.replace(/-/g,'')}`;
+  // End = start + actualDays
+  const endD=new Date(y,m-1,d+j.actualDays);
+  const dtEnd=[endD.getFullYear(),String(endD.getMonth()+1).padStart(2,'0'),String(endD.getDate()).padStart(2,'0')].join('');
+  const uid=`salah-${j.id}@urs-oman`;
+  const ics=[
+    'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//URS Oman//Job Planner//EN','CALSCALE:GREGORIAN','METHOD:REQUEST',
+    'BEGIN:VEVENT',
+    `UID:${uid}`,
+    `DTSTART;VALUE=DATE:${dtStart}`,
+    `DTEND;VALUE=DATE:${dtEnd}`,
+    `SUMMARY:${j.client} – ${j.service} Audit`,
+    `DESCRIPTION:${schemes}${j.region?' | '+j.region:''}${j.notes?' | '+j.notes:''}`,
+    `LOCATION:${j.region||''}`,
+    `ORGANIZER;CN=URS Oman Operations:mailto:${OP_EMAIL}`,
+    `ATTENDEE;ROLE=REQ-PARTICIPANT;CN=Salah Hafez:mailto:${SALAH_EMAIL}`,
+    'END:VEVENT','END:VCALENDAR'
+  ].join('\r\n');
+  const blob=new Blob([ics],{type:'text/calendar'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`${j.client}_${j.service}_${j.startDate}.ics`;
+  a.click();
+}
+
 function showMsg(msg,color){
   const el=document.getElementById('formMsg');
   el.textContent=msg; el.style.color=color; el.style.display='block';
@@ -8028,4 +8312,4 @@ setInterval(()=>{
 </script>
 </body>
 </html>
-<!-- BUILD: 2026-10-02 16:51:13 -->
+<!-- BUILD: 2026-10-02 17:04:53 -->
