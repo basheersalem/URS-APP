@@ -12,11 +12,10 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <script>
-// Static manifest.json + icon-192.png + icon-512.png + sw.js served from /urs-app/ (JBL-style)
 // Service worker — required for Chrome install button (beforeinstallprompt)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {
-    navigator.serviceWorker.register('/urs-app/sw.js', {scope: '/urs-app/'})
+    navigator.serviceWorker.register('/sw.js', {scope: '/'})
       .then(function(r){ console.log('SW registered', r.scope); })
       .catch(function(e){ console.log('SW error', e); });
   });
@@ -2296,7 +2295,42 @@ ugM0UhDk3QXyL+T/BRgAyo7z4+am9cEAAAAASUVORK5CYII=" alt="URS Logo" style="height:4
       <div class="modal-row"><label>Lead Source</label>
         <select id="pm_lead"><option value="Direct">Direct</option><option value="Simon Joseph">Simon Joseph</option><option value="Asheef">Asheef</option><option value="Other">Other</option></select>
       </div>
-      <div class="modal-row"><label>Standards Requested</label><input id="pm_standards" placeholder="ISO 9001, ISO 14001..."></div>
+      <div class="modal-row" style="grid-column:1/-1"><label>Standards Requested</label>
+        <div id="pm_std_tags" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px"></div>
+        <select id="pm_std_sel" onchange="pmAddStd()" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:12px">
+          <option value="">— Select scheme to add —</option>
+          <optgroup label="✅ Accredited (UKAS)">
+            <option>ISO 9001:2015 (UKAS)</option>
+            <option>ISO 14001:2015 (UKAS)</option>
+            <option>ISO 45001:2018 (UKAS)</option>
+            <option>ISO 50001:2018 (UKAS)</option>
+            <option>ISO 22000:2018 (UKAS)</option>
+            <option>ISO 27001:2022 (UKAS)</option>
+            <option>ISO 13485:2016 (UKAS)</option>
+            <option>ISO 17020:2012 (UKAS)</option>
+          </optgroup>
+          <optgroup label="✅ Accredited (EIAC)">
+            <option>ISO 9001:2015 (EIAC)</option>
+            <option>ISO 14001:2015 (EIAC)</option>
+            <option>ISO 45001:2018 (EIAC)</option>
+            <option>ISO 50001:2018 (EIAC)</option>
+            <option>ISO 22000:2018 (EIAC)</option>
+            <option>ISO 27001:2022 (EIAC)</option>
+            <option>ISO 13485:2016 (EIAC)</option>
+          </optgroup>
+          <optgroup label="📄 Non-Accredited">
+            <option>ISO 9001:2015</option>
+            <option>ISO 14001:2015</option>
+            <option>ISO 45001:2018</option>
+            <option>ISO 50001:2018</option>
+            <option>ISO 22000:2018</option>
+            <option>ISO 27001:2022</option>
+            <option>ISO 13485:2016</option>
+            <option>IMS (9001+14001+45001)</option>
+          </optgroup>
+        </select>
+        <input type="hidden" id="pm_standards">
+      </div>
       <div class="modal-row"><label>Questionnaire Date</label><input id="pm_cq_date" type="date"></div>
       <div class="modal-row"><label>Proposal Ref</label><input id="pm_ref" placeholder="OMA-L26-AQ-xxx"></div>
       <div class="modal-row"><label>Proposal Sent Date</label><input id="pm_prop_date" type="date"></div>
@@ -4723,6 +4757,27 @@ function fmtDate(d){
   const p=String(d).trim(); const m=p.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   return m?`${m[3]}-${m[2]}-${m[1]}`:p;
 }
+// ── Calendar date-picker modal (returns Promise<YYYY-MM-DD|null>) ──
+function showDatePicker(title, defaultISO){
+  return new Promise(resolve=>{
+    const old=document.getElementById('_datepicker_modal'); if(old) old.remove();
+    const def=defaultISO||toStr(new Date());
+    const m=document.createElement('div');
+    m.id='_datepicker_modal';
+    m.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center';
+    m.innerHTML=`<div style="background:#fff;border-radius:12px;padding:24px 28px;min-width:300px;box-shadow:0 8px 32px rgba(0,0,0,.25)">
+      <div style="font-weight:700;font-size:14px;margin-bottom:14px;color:#1a3c1a">${title}</div>
+      <input type="date" id="_dp_input" value="${def}" style="width:100%;padding:8px 10px;font-size:15px;border:1.5px solid #d1d5db;border-radius:7px;outline:none;box-sizing:border-box">
+      <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end">
+        <button onclick="document.getElementById('_datepicker_modal').remove();window._dpRes(null)" style="padding:7px 18px;border:1px solid #d1d5db;background:#fff;border-radius:7px;cursor:pointer;font-size:13px">Cancel</button>
+        <button onclick="const v=document.getElementById('_dp_input').value;document.getElementById('_datepicker_modal').remove();window._dpRes(v||null)" style="padding:7px 18px;background:#15803d;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:13px;font-weight:600">OK</button>
+      </div>
+    </div>`;
+    window._dpRes=resolve;
+    document.body.appendChild(m);
+    setTimeout(()=>{const i=document.getElementById('_dp_input');if(i)i.focus();},50);
+  });
+}
 function daysDiff(d){
   return Math.round((d-new Date())/(1000*60*60*24));
 }
@@ -5632,12 +5687,9 @@ function installApp(){
   } else {
     // Trigger Chrome's built-in install flow via keyboard shortcut simulation
     // or guide user to address bar install icon
-    const isFile = location.protocol==='file:';
-    const msg = isFile
-      ? 'Open the app at:\nhttps://app-wand-workshop.vercel.app/urs-app\n\nThen use the install icon in the address bar.'
-      : 'Chrome already shows an install option in the address bar.\n\nLook for the monitor icon (🖥) on the RIGHT side of the address bar and click it.';
-    if(confirm(msg + (isFile ? '' : '\n\nClick OK to reload the page so the install button activates.'))){
-      if(!isFile) location.reload();
+    // App not yet installable — reload to let SW register and prompt activate
+    if(confirm('App install prompt not ready yet.\n\nClick OK to reload the page — the Install button will activate after reload.')){
+      location.reload();
     }
   }
 }
@@ -5929,6 +5981,29 @@ function printDoc(id){
 // ═══════════════════════════════════════════════════════════════
 //  V3 — PIPELINE
 // ═══════════════════════════════════════════════════════════════
+window._pmStds=[];
+function pmRenderStdTags(){
+  const wrap=document.getElementById('pm_std_tags');
+  const hidden=document.getElementById('pm_standards');
+  if(!wrap) return;
+  wrap.innerHTML=(_pmStds||[]).map((s,i)=>{
+    const isUKAS=s.includes('UKAS'), isEIAC=s.includes('EIAC');
+    const bg=isUKAS?'#dbeafe':isEIAC?'#fef3c7':'#f3f4f6';
+    const col=isUKAS?'#1e40af':isEIAC?'#92400e':'#374151';
+    const bdr=isUKAS?'#93c5fd':isEIAC?'#fcd34d':'#d1d5db';
+    return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;background:${bg};color:${col};border:1px solid ${bdr}">${s}<button type="button" onclick="_pmStds.splice(${i},1);pmRenderStdTags()" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:11px;padding:0;line-height:1">×</button></span>`;
+  }).join('');
+  if(hidden) hidden.value=(_pmStds||[]).join(', ');
+  const sel=document.getElementById('pm_std_sel'); if(sel) sel.value='';
+}
+function pmAddStd(){
+  const sel=document.getElementById('pm_std_sel');
+  if(!sel||!sel.value) return;
+  if(!window._pmStds) window._pmStds=[];
+  if(!_pmStds.includes(sel.value)) _pmStds.push(sel.value);
+  pmRenderStdTags();
+}
+
 function openPipelineModal(id){
   const modal=document.getElementById('pip_modal');
   if(id){
@@ -5940,7 +6015,7 @@ function openPipelineModal(id){
     document.getElementById('pm_phone').value=c.phone||'';
     document.getElementById('pm_email').value=c.email||'';
     document.getElementById('pm_lead').value=c.leadSource||'Direct';
-    document.getElementById('pm_standards').value=(c.standards||[]).join(', ');
+    window._pmStds=[...(c.standards||[])]; pmRenderStdTags();
     document.getElementById('pm_cq_date').value=c.cqDate||'';
     document.getElementById('pm_ref').value=c.proposalRef||'';
     document.getElementById('pm_prop_date').value=c.proposalDate||'';
@@ -5952,7 +6027,8 @@ function openPipelineModal(id){
     document.getElementById('pm_notes').value=c.notes||'';
     modal.dataset.editId=id;
   } else {
-    ['pm_name','pm_contact','pm_phone','pm_email','pm_standards','pm_cq_date','pm_ref','pm_prop_date','pm_fee_init','pm_fee_su1','pm_fee_su2','pm_notes'].forEach(x=>{ const el=document.getElementById(x); if(el) el.value=''; });
+    ['pm_name','pm_contact','pm_phone','pm_email','pm_cq_date','pm_ref','pm_prop_date','pm_fee_init','pm_fee_su1','pm_fee_su2','pm_notes'].forEach(x=>{ const el=document.getElementById(x); if(el) el.value=''; });
+    window._pmStds=[]; pmRenderStdTags();
     document.getElementById('pm_lead').value='Direct';
     document.getElementById('pm_status').value='lead';
     document.getElementById('pm_terms').value='100%';
@@ -6032,20 +6108,20 @@ function moveToOngoing(id){
   alert(`✅ ${c.name} moved to Ongoing.\n\nAccounts should receive notification to issue the advance invoice.`);
   renderPipeline(); renderOngoing();
 }
-function pipelineToCertified(id){
+async function pipelineToCertified(id){
   const data=getData();
   const c=data.pipeline.find(x=>x.id===id);
   if(!c){ alert('Client not found'); return; }
-  const certDate=prompt(`Certificate issue date for ${c.name} (YYYY-MM-DD):`, new Date().toISOString().slice(0,10));
+  const _addM=(d,m)=>{const r=new Date(d);r.setMonth(r.getMonth()+m);return toStr(r);};
+  const certDate=await showDatePicker(`Certificate issue date — ${c.name}`, toStr(new Date()));
   if(!certDate) return;
-  if(!confirm(`Move ${c.name} directly to Certified?\nCert Date: ${certDate}`)) return;
+  if(!confirm(`Move ${c.name} directly to Certified?\nCert Date: ${fmtDate(certDate)}`)) return;
   const cd=new Date(certDate+'T00:00:00');
-  const addM=(d,m)=>{ const r=new Date(d); r.setMonth(r.getMonth()+m); return r.toISOString().slice(0,10); };
   const certRec={
     ...c, id:'cert_'+Date.now(), stage:'certified',
-    certDate, su1Date:addM(cd,11), su2Date:addM(cd,23),
-    rc1Date:addM(cd,33), expiryDate:addM(cd,36),
-    nextAuditType:'SU1', nextAuditDue:addM(cd,11),
+    certDate, su1Date:_addM(cd,11), su2Date:_addM(cd,23),
+    rc1Date:_addM(cd,33), expiryDate:_addM(cd,36),
+    nextAuditType:'SU1', nextAuditDue:_addM(cd,11),
     certReleasedAt:Date.now()
   };
   if(!data.registrations) data.registrations=[];
@@ -6056,7 +6132,7 @@ function pipelineToCertified(id){
     data.simonCommissions.push({id:'com_'+Date.now(),clientId:certRec.id,clientName:c.name,phase:'Initial Cert',certDate,status:'due',amount:0,createdAt:Date.now()});
   }
   saveLocal(data); syncSave(data).catch(()=>{});
-  alert(`✅ ${c.name} certified!\n\nSU1: ${certRec.su1Date}\nSU2: ${certRec.su2Date}\nExpiry: ${certRec.expiryDate}`);
+  alert(`✅ ${c.name} certified!\n\nSU1: ${fmtDate(certRec.su1Date)}\nSU2: ${fmtDate(certRec.su2Date)}\nExpiry: ${fmtDate(certRec.expiryDate)}`);
   renderPipeline(); renderCertified(); renderDashboard();
 }
 
@@ -6073,7 +6149,8 @@ function renderPipeline(){
   const sum=document.getElementById('pip_summary');
   if(sum) sum.textContent=`${list.length} client${list.length!==1?'s':''} in pipeline · ${list.filter(c=>c.status==='awaiting').length} awaiting signature`;
   if(!list.length){ tbody.innerHTML=`<tr><td colspan="9" class="empty">No pipeline clients${q||sf?' match your filter':''}</td></tr>`; return; }
-  tbody.innerHTML=list.map(c=>{
+  tbody.innerHTML=list.map((c,idx)=>{
+    const _rbg=idx%2===0?'#fff':'#f5fbf5';
     const daysSince=c.proposalDate?Math.floor((today-new Date(c.proposalDate))/86400000):null;
     let daysHtml='—';
     if(daysSince!==null){
@@ -6085,16 +6162,16 @@ function renderPipeline(){
     const stTxt={lead:'#1e40af',proposal:'#854d0e',awaiting:'#15803d',lost:'#991b1b'};
     const st=c.status||'lead';
     const revCount=(c.revisions||[]).length+1;
-    return `<tr>
-      <td><b>${c.name}</b>${c.leadSource==='Simon Joseph'?'<br><span style="font-size:9px;color:#5b21b6">👤 Simon</span>':c.leadSource==='Asheef'?'<br><span style="font-size:9px;color:#0369a1">💼 Asheef</span>':''}</td>
-      <td style="font-size:10px">${(c.standards||[]).join('<br>')||'—'}</td>
-      <td><span style="font-size:10px">${c.leadSource||'Direct'}</span></td>
-      <td style="font-size:10px">${c.proposalRef||'—'}</td>
-      <td><span class="rev-badge">v${revCount}</span></td>
-      <td style="font-size:10px">${c.feeInit?c.feeInit.toFixed(3)+' OMR':'—'}</td>
-      <td><span style="background:${stColor[st]};color:${stTxt[st]};padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700">${stMap[st]||st}</span></td>
-      <td>${daysHtml}</td>
-      <td>
+    return `<tr style="background:${_rbg}">
+      <td style="background:${_rbg}"><b>${c.name}</b>${c.leadSource==='Simon Joseph'?'<br><span style="font-size:9px;color:#5b21b6">👤 Simon</span>':c.leadSource==='Asheef'?'<br><span style="font-size:9px;color:#0369a1">💼 Asheef</span>':''}</td>
+      <td style="font-size:10px;background:${_rbg}">${(c.standards||[]).join('<br>')||'—'}</td>
+      <td style="font-size:10px;background:${_rbg}">${c.leadSource||'Direct'}</td>
+      <td style="font-size:10px;background:${_rbg}">${c.proposalRef||'—'}</td>
+      <td style="background:${_rbg}"><span class="rev-badge">v${revCount}</span></td>
+      <td style="font-size:10px;background:${_rbg}">${c.feeInit?c.feeInit.toFixed(3)+' OMR':'—'}</td>
+      <td style="background:${_rbg}"><span style="background:${stColor[st]};color:${stTxt[st]};padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700">${stMap[st]||st}</span></td>
+      <td style="background:${_rbg}">${daysHtml}</td>
+      <td style="background:${_rbg}">
         <button class="btn-sm btn-view" onclick="openProfile('pip_${c.id}','${c.name.replace(/'/g,"\\'")}')">👤</button>
         <button class="btn-sm btn-view" onclick="openPipelineModal('${c.id}')">✏️</button>
         <button class="btn-sm btn-move" onclick="moveToOngoing('${c.id}')">→ Ongoing</button>
@@ -6120,6 +6197,8 @@ function renderOngoing(){
   const sum=document.getElementById('ong_summary');
   if(sum) sum.textContent=`${list.length} ongoing client${list.length!==1?'s':''} · ${list.filter(c=>c.status==='pending_release').length} pending cert release`;
   if(!list.length){ tbody.innerHTML=`<tr><td colspan="9" class="empty">No ongoing clients yet — move signed contracts here from Pipeline</td></tr>`; return; }
+  // filter out pending_release from main table
+
   // Pending MD approvals
   const pendingMD=list.filter(c=>c.status==='pending_release');
   const approvalDiv=document.getElementById('ong_approvals');
@@ -6135,21 +6214,22 @@ function renderOngoing(){
       </div>`).join('');
     } else { approvalDiv.style.display='none'; }
   }
-  tbody.innerHTML=list.map(c=>{
+  tbody.innerHTML=list.map((c,idx)=>{
+    const _rbg=idx%2===0?'#fff':'#f5fbf5';
     const statusMap={pending_audit:'⏳ Not Scheduled',scheduled:'📅 Scheduled',completed:'🔍 Completed',pending_release:'🔐 Pending Release',released:'✅ Released',ongoing:'📋 In Progress'};
     const payHtml=c.paymentTerms==='gov'?'<span class="aging-ok" style="font-size:9px">Gov (After)</span>':c.paymentCleared?'<span class="aging-ok" style="font-size:9px">Paid ✓</span>':'<span class="aging-90" style="font-size:9px">Pending</span>';
     let sch=c.standards||c.schemes||[];
     if(!Array.isArray(sch)) sch=sch?String(sch).split(',').map(s=>s.trim()).filter(Boolean):[];
-    return `<tr>
-      <td><b>${c.name}</b>${c.leadSource==='Simon Joseph'?'<br><span style="font-size:9px;color:#5b21b6">👤 Simon</span>':''}</td>
-      <td style="font-size:10px">${sch.join(', ')||'—'}</td>
-      <td style="font-size:10px">${c.proposalRef||'—'}</td>
-      <td><span class="badge ${c.auditType?'su1':'s1'}" style="font-size:9px">${c.auditType||'S1+S2'}</span></td>
-      <td style="font-size:10px">${c.auditor||'<span style="color:#888">—</span>'}</td>
-      <td style="font-size:10px">${fmtDate(c.auditDate)||'<span style="color:#888">—</span>'}</td>
-      <td>${payHtml}</td>
-      <td><span style="font-size:10px;color:#555">${statusMap[c.status]||c.status}</span></td>
-      <td>
+    return `<tr style="background:${_rbg}">
+      <td style="background:${_rbg}"><b>${c.name}</b>${c.leadSource==='Simon Joseph'?'<br><span style="font-size:9px;color:#5b21b6">👤 Simon</span>':''}</td>
+      <td style="font-size:10px;background:${_rbg}">${sch.join(', ')||'—'}</td>
+      <td style="font-size:10px;background:${_rbg}">${c.proposalRef||'—'}</td>
+      <td style="background:${_rbg}"><span class="badge ${c.auditType?'su1':'s1'}" style="font-size:9px">${c.auditType||'S1+S2'}</span></td>
+      <td style="font-size:10px;background:${_rbg}">${c.auditor||'<span style="color:#888">—</span>'}</td>
+      <td style="font-size:10px;background:${_rbg}">${fmtDate(c.auditDate)||'<span style="color:#888">—</span>'}</td>
+      <td style="background:${_rbg}">${payHtml}</td>
+      <td style="background:${_rbg}"><span style="font-size:10px;color:#555">${statusMap[c.status]||c.status}</span></td>
+      <td style="background:${_rbg}">
         <button class="btn-sm btn-view" onclick="editOngoing('${c.id}')">✏️</button>
         <button class="btn-sm btn-view" onclick="openProfile('ong_${c.id}','${c.name.replace(/'/g,"\\'")}')">👤</button>
         <button class="btn-sm btn-move" onclick="triggerCertRelease('${c.id}')" style="background:#15803d;color:#fff" title="Release Certificate">→ Certified</button>
@@ -6174,17 +6254,17 @@ function editNCR(id){
   const idx=data.ongoing.findIndex(x=>x.id===id);
   data.ongoing[idx]=c; saveLocal(data); syncSave(data).catch(()=>{}); renderOngoing();
 }
-function editOngoing(id){
+async function editOngoing(id){
   const data=getData();
   const c=data.ongoing.find(x=>x.id===id);
   if(!c) return;
   const auditor=prompt('Auditor (leave blank to keep current):',c.auditor||'')||c.auditor||'';
-  const auditDate=prompt('Audit date (YYYY-MM-DD):',c.auditDate||'')||c.auditDate||'';
+  const auditDate=await showDatePicker(`Audit date — ${c.name}`, c.auditDate||toStr(new Date()))||c.auditDate||'';
   const auditType=prompt('Audit type (S1, S2, SU1, SU2, RC1):',c.auditType||'')||c.auditType||'';
   const completed=confirm('Mark audit as completed?');
   const idx=data.ongoing.findIndex(x=>x.id===id);
   data.ongoing[idx]={...c,auditor,auditDate,auditType,
-    auditCompletedDate:completed?(c.auditCompletedDate||new Date().toISOString().slice(0,10)):c.auditCompletedDate,
+    auditCompletedDate:completed?(c.auditCompletedDate||toStr(new Date())):c.auditCompletedDate,
     status:completed?'completed':auditDate?'scheduled':'pending_audit',updatedAt:Date.now()};
   saveLocal(data); syncSave(data).catch(()=>{}); renderOngoing();
 }
@@ -6203,25 +6283,25 @@ function triggerCertRelease(id){
   }
   releaseCert(id);
 }
-function releaseCert(id){
+async function releaseCert(id){
   const data=getData();
   const idx=data.ongoing.findIndex(x=>x.id===id);
   if(idx<0) return;
   const c=data.ongoing[idx];
-  const certDate=prompt('Certificate issue date (YYYY-MM-DD):',new Date().toISOString().slice(0,10));
+  const _addM2=(d,m)=>{const r=new Date(d);r.setMonth(r.getMonth()+m);return toStr(r);};
+  const certDate=await showDatePicker(`Certificate issue date — ${c.name}`, toStr(new Date()));
   if(!certDate) return;
-  if(!confirm(`Release certificate for ${c.name}?\nCert Date: ${certDate}`)) return;
+  if(!confirm(`Release certificate for ${c.name}?\nCert Date: ${fmtDate(certDate)}`)) return;
   // Calculate SU dates
   const cd=new Date(certDate+'T00:00:00');
-  const addMonths=(d,m)=>{ const r=new Date(d); r.setMonth(r.getMonth()+m); return r.toISOString().slice(0,10); };
   const certRec={
     ...c,id:'cert_'+Date.now(),
     pipelineId:c.pipelineId||null,ongoingId:c.id,
     stage:'certified',
     certDate,
-    su1Date:addMonths(cd,11),su2Date:addMonths(cd,23),
-    rc1Date:addMonths(cd,33),expiryDate:addMonths(cd,36),
-    nextAuditType:'SU1',nextAuditDue:addMonths(cd,11),
+    su1Date:_addM2(cd,11),su2Date:_addM2(cd,23),
+    rc1Date:_addM2(cd,33),expiryDate:_addM2(cd,36),
+    nextAuditType:'SU1',nextAuditDue:_addM2(cd,11),
     certReleasedAt:Date.now()
   };
   if(!data.registrations) data.registrations=[];
@@ -6233,7 +6313,7 @@ function releaseCert(id){
     data.simonCommissions.push({id:'com_'+Date.now(),clientId:certRec.id,clientName:c.name,phase:'Initial Cert',certDate,status:'due',amount:0,createdAt:Date.now()});
   }
   saveLocal(data); syncSave(data).catch(()=>{});
-  alert(`✅ Certificate released for ${c.name}!\n\nSU1: ${certRec.su1Date}\nSU2: ${certRec.su2Date}\nExpiry: ${certRec.expiryDate}${c.leadSource==='Simon Joseph'?'\n\n💜 Simon Joseph commission flagged.':''}`);
+  alert(`✅ Certificate released for ${c.name}!\n\nSU1: ${fmtDate(certRec.su1Date)}\nSU2: ${fmtDate(certRec.su2Date)}\nExpiry: ${fmtDate(certRec.expiryDate)}${c.leadSource==='Simon Joseph'?'\n\n💜 Simon Joseph commission flagged.':''}`);
   renderOngoing(); renderCertified(); renderDashboard();
 }
 function holdCert(id){
@@ -6298,7 +6378,8 @@ function renderCertified(){
   const groupedRegs=Object.values(imsMap);
 
   const rows=[];
-  groupedRegs.forEach(r=>{
+  groupedRegs.forEach((r,idx)=>{
+    const _rbg=idx%2===0?'#fff':'#f5fbf5';
     try{
     const name=r.name||r.clientName||'—';
     const ukRef=r.ukRef||'—';
@@ -6366,22 +6447,21 @@ function renderCertified(){
     const status=r.status||'Active';
     const stColor={Active:'#dcfce7',Suspended:'#fef9c3',Withdrawn:'#fee2e2'};
     const stTxt={Active:'#15803d',Suspended:'#854d0e',Withdrawn:'#991b1b'};
-    rows.push(`<tr>
-      <td><b>${name}</b></td>
-      <td style="font-size:10px;color:#888">${ukRef}</td>
-      <td style="font-size:10px">${(()=>{
-        // IMS display: extract scheme numbers, build IMS label if multiple
+    rows.push(`<tr style="background:${_rbg}">
+      <td style="background:${_rbg}"><b>${name}</b></td>
+      <td style="font-size:10px;color:#888;background:${_rbg}">${ukRef}</td>
+      <td style="font-size:10px;background:${_rbg}">${(()=>{
         const nums=schemes.map(s=>(String(s).match(/\d{4,5}/)||[])[0]).filter(Boolean);
         if(nums.length>1) return `<span style="font-weight:600;color:#1a5c2a">IMS</span> <span style="color:#888;font-size:9px">(${nums.join(', ')})</span>`;
         return schemes.slice(0,2).map(s=>s.replace(/\s*\(UKAS\)|\s*\(EIAC\)/gi,'').trim()).join('<br>')||'—';
       })()}</td>
-      <td style="font-size:10px">${fmtDate(certDate)||'—'}</td>
-      <td>${healthHtml}</td>
-      <td>${lastCell}</td>
-      <td>${nextCell}</td>
-      <td style="text-align:center">${tickCell}</td>
-      <td><span style="background:${stColor[status]||'#f3f4f6'};color:${stTxt[status]||'#374151'};padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700">${status}</span></td>
-      <td>
+      <td style="font-size:10px;background:${_rbg}">${fmtDate(certDate)||'—'}</td>
+      <td style="background:${_rbg}">${healthHtml}</td>
+      <td style="background:${_rbg}">${lastCell}</td>
+      <td style="background:${_rbg}">${nextCell}</td>
+      <td style="text-align:center;background:${_rbg}">${tickCell}</td>
+      <td style="background:${_rbg}"><span style="background:${stColor[status]||'#f3f4f6'};color:${stTxt[status]||'#374151'};padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700">${status}</span></td>
+      <td style="background:${_rbg}">
         <button class="btn-sm btn-view" onclick="openProfile('${r.id||r.clientId||name}','${name.replace(/'/g,"\\'")}')">👤 Profile</button>
         <button class="btn-sm btn-view" onclick="openCertFolder('${name.replace(/'/g,"\\'")}')">📂</button>
         <button class="btn-sm btn-view" onclick="editClient('${r.id||r.clientId||''}');showView('newclient',document.querySelector('nav button[onclick*=newclient]'))">✏️</button>
@@ -8437,4 +8517,4 @@ setInterval(()=>{
 </script>
 </body>
 </html>
-<!-- BUILD: 2026-10-02 17:40:31 -->
+<!-- BUILD: 2026-10-02 18:45:28 -->
