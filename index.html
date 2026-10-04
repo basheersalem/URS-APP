@@ -2955,6 +2955,14 @@ ugM0UhDk3QXyL+T/BRgAyo7z4+am9cEAAAAASUVORK5CYII=" alt="URS Logo" style="height:4
       </div>
     </div>
     <div class="card" style="margin-bottom:14px">
+      <div class="card-header">📋 Schemes</div>
+      <div class="card-body">
+        <p style="font-size:11px;color:#666;margin-bottom:8px">Built-in schemes are always available. Add any missing scheme below — it will appear in all dropdowns.</p>
+        <div class="atags" id="settingsSchemesTags"></div>
+        <div class="ar"><input type="text" id="newScheme" placeholder="e.g. ISO 9001:2015 + ISO 14001:2015 (UKAS)" style="flex:1"><button class="btn btn-primary" onclick="addCustomScheme()">Add</button></div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:14px">
       <div class="card-header">☁️ Cloud Sync</div>
       <div class="card-body">
         <p style="font-size:11px;color:#666;margin-bottom:10px">Sync your data across all devices (Oman office, Windows PCs, mobile).</p>
@@ -3955,8 +3963,6 @@ const SCHEMES_SEED = [
   // QMS
   'ISO 9001:2015 – Quality Management (UKAS)',
   'ISO 9001:2015 + HACCP – QMS with Food Safety (UKAS)',
-  'AS9100D – Aerospace Quality Management (UKAS)',
-  'AS9120B – Aerospace Distribution QMS (UKAS)',
   // MD-QMS
   'ISO 13485:2016 – Medical Devices QMS (UKAS)',
   // EMS
@@ -3981,6 +3987,8 @@ const SCHEMES_SEED = [
   'ISO 45001:2018 + SSIP – Safety Schemes in Procurement (UKAS)',
   // EnMS
   'ISO 50001:2018 – Energy Management (UKAS)',
+  // FSMS Combos – UKAS
+  'ISO 22000:2018 + HACCP (UKAS)',
   // ── IMS – UKAS ────────────────────────────────────────────────────
   'IMS – ISO 9001 + ISO 14001 + ISO 45001 (UKAS)',
   'IMS – ISO 9001 + ISO 14001 (UKAS)',
@@ -3988,6 +3996,7 @@ const SCHEMES_SEED = [
   'IMS – ISO 9001 + ISO 22000 + ISO 14001 + ISO 45001 (UKAS)',
   'IMS – ISO 9001 + ISO 22000 + ISO 45001 (UKAS)',
   // ── EIAC Accredited ───────────────────────────────────────────────
+  'AS9120B – Aerospace Distribution QMS (EIAC)',
   'ISO 9001:2015 – Quality Management (EIAC)',
   'ISO 14001:2015 – Environmental Management (EIAC)',
   'ISO 22000:2018 – Food Safety Management (EIAC)',
@@ -4020,7 +4029,7 @@ const SCHEMES_SEED = [
   'IMS – ISO 9001 + ISO 22000 + ISO 14001 + ISO 45001',
   'IMS – ISO 9001 + ISO 22000 + ISO 45001',
 ];
-let _schemesCache=[...SCHEMES_SEED];
+let _schemesCache=(()=>{ try{ const d=JSON.parse(localStorage.getItem('urs_data')||'{}'); return [...SCHEMES_SEED,...(d.customSchemes||[])]; }catch{return [...SCHEMES_SEED];} })();
 
 function abbrScheme(s){
   if(!s) return '';
@@ -4208,7 +4217,7 @@ async function deleteJob(id){
 // ═══════════════════════════════════════════════════════════════
 //  SALAH JOB PLANNER
 // ═══════════════════════════════════════════════════════════════
-const SALAH_EMAIL = 'Auditors.oman@urs-me.om';
+const SALAH_EMAIL = 'audits.oman@urs-me.om';
 const OP_EMAIL    = 'Operation.oman@urs-me.om';
 
 let _shSchemes = [];
@@ -4249,11 +4258,18 @@ function renderSalah(){
 }
 
 function shPopulateSchemes(){
-  const data=getData();
   const sel=document.getElementById('sh_schemeAdd');
   if(!sel) return;
-  const schemes=data.schemes||['ISO 9001:2015 (UKAS)','ISO 14001:2015 (UKAS)','ISO 45001:2018 (UKAS)','ISO 50001:2018 (UKAS)','ISO 22000:2018','ISO 27001:2022'];
-  sel.innerHTML='<option value="">Pick scheme…</option>'+schemes.map(s=>`<option>${s}</option>`).join('');
+  const grp=(label,items)=>items.length?`<optgroup label="${label}">${items.map(s=>`<option value="${s.replace(/"/g,'&quot;')}">${s}</option>`).join('')}</optgroup>`:'';
+  const combos=[
+    'IMS – ISO 9001 + ISO 14001 + ISO 45001 (UKAS)',
+    'ISO 22000:2018 + HACCP (EIAC)',
+    'ISO 22000:2018 – Food Safety Management (UKAS)',
+  ];
+  const ukas=_schemesCache.filter(s=>s.includes('(UKAS)'));
+  const eiac=_schemesCache.filter(s=>s.includes('(EIAC)'));
+  const other=_schemesCache.filter(s=>!s.includes('(UKAS)')&&!s.includes('(EIAC)'));
+  sel.innerHTML='<option value="">Pick scheme…</option>'+grp('── Quick Combos',combos)+grp('── UKAS Accredited',ukas)+grp('── EIAC Accredited',eiac)+(other.length?grp('── Non-Accredited',other):'');
 }
 
 function shPopulateClients(){ /* uses getMergedClients() live */ }
@@ -4559,7 +4575,7 @@ function exportGoogleCalendar(){
     const title=encodeURIComponent(`${job.client} — ${schemes} ${job.service}`);
     const start=gcDate(actuals[0]);
     const endDate=new Date(actuals[actuals.length-1]+'T00:00:00'); endDate.setDate(endDate.getDate()+1);
-    const end=gcDate(endDate.toISOString().slice(0,10));
+    const end=gcDate(toStr(endDate));
     const details=encodeURIComponent(`Auditor: ${auditors.join(', ')}\nScheme: ${schemes}\nService: ${job.service}\nRegion: ${job.region||''}\nActual Days: ${job.actualDays} | Contract Days: ${job.contractDays}`);
     const location=encodeURIComponent(job.region||'Oman');
     const url=`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${end}&details=${details}&location=${location}`;
@@ -4734,6 +4750,32 @@ function renderSettings(){
     </div>`).join('');
   document.getElementById('clientTags').innerHTML=data.clients.map(c=>`
     <div class="atag" style="background:#e6f4ea">${c}<span class="rm" onclick="removeClient('${c}')">×</span></div>`).join('');
+  const custom=(data.customSchemes||[]);
+  document.getElementById('settingsSchemesTags').innerHTML=custom.length
+    ? custom.map(s=>`<div class="atag" style="background:#e8f0fe;color:#1a3c8a">${s}<span class="rm" onclick="removeCustomScheme('${s.replace(/'/g,"\\'")}')" style="color:#ea4335">×</span></div>`).join('')
+    : '<span style="font-size:11px;color:#9ca3af;font-style:italic">No custom schemes yet — built-in list is used</span>';
+}
+async function addCustomScheme(){
+  const name=document.getElementById('newScheme').value.trim();
+  if(!name) return;
+  const data=getData();
+  if(!data.customSchemes) data.customSchemes=[];
+  if(!data.customSchemes.includes(name) && !SCHEMES_SEED.includes(name)){
+    data.customSchemes.push(name);
+    await syncSave(data);
+    _schemesCache=[...SCHEMES_SEED,...data.customSchemes];
+    populateSchemeSelect(); shPopulateSchemes();
+  }
+  document.getElementById('newScheme').value='';
+  renderSettings();
+}
+async function removeCustomScheme(name){
+  const data=getData();
+  data.customSchemes=(data.customSchemes||[]).filter(s=>s!==name);
+  await syncSave(data);
+  _schemesCache=[...SCHEMES_SEED,...data.customSchemes];
+  populateSchemeSelect(); shPopulateSchemes();
+  renderSettings();
 }
 async function addAuditor(){
   const name=document.getElementById('newAuditor').value.trim();
@@ -5442,7 +5484,7 @@ function ncAutoFillDates(){
   const cdEl=document.getElementById('nc_certDate');
   if(!cdEl||!cdEl.value) return;
   const cd=new Date(cdEl.value+'T00:00:00');
-  const addM=(d,m)=>{const r=new Date(d);r.setMonth(r.getMonth()+m);return r.toISOString().split('T')[0];};
+  const addM=(d,m)=>{const r=new Date(d);r.setMonth(r.getMonth()+m);return toStr(r);};
   [['nc_certExpiry',36],['nc_su1Date',12],['nc_su2Date',24],['nc_rc1Date',33]].forEach(([id,mo])=>{
     const el=document.getElementById(id);
     if(el&&(el.dataset.auto==='1'||!el.value)){
@@ -5515,7 +5557,7 @@ async function saveNewClient(){
       proposalRef:reg.quotationRef||reg.proposalRef||'', feeInit:parseFloat(reg.contractValue)||0,
       region:reg.region, country:reg.country, contact:reg.contact, email:reg.email, phone:reg.phone,
       ukRef:reg.ukRef, scope:reg.scope, status:'proposal',
-      proposalDate:new Date().toISOString().slice(0,10),
+      proposalDate:toStr(new Date()),
       createdAt:Date.now(), revisions:[]
     };
     data.pipeline.push(pObj);
@@ -5525,7 +5567,7 @@ async function saveNewClient(){
       ...reg, id:'ong_'+reg.id, stage:'ongoing',
       standards:reg.schemes||[], schemes:reg.schemes||[],
       auditType:reg.stage||'', auditor:reg.auditor||'', auditDate:'',
-      status:'pending_audit', contractSignedDate:new Date().toISOString().slice(0,10),
+      status:'pending_audit', contractSignedDate:toStr(new Date()),
       createdAt:Date.now()
     };
     data.ongoing.push(oObj);
@@ -6154,7 +6196,7 @@ function moveToOngoing(id){
     id:'ong_'+Date.now(),
     pipelineId:c.id,
     stage:'ongoing',
-    contractSignedDate:new Date().toISOString().slice(0,10),
+    contractSignedDate:toStr(new Date()),
     auditType:'',auditor:'',auditDate:'',auditCompletedDate:'',
     ncrMajor:0,ncrMinor:0,ncrClosed:0,ncrClosedDate:'',
     status:'pending_audit',
@@ -6309,7 +6351,7 @@ function editNCR(id){
   if(cls===null) return;
   c.ncrMajor=parseInt(maj)||0; c.ncrMinor=parseInt(min)||0; c.ncrClosed=parseInt(cls)||0;
   const total=c.ncrMajor+c.ncrMinor;
-  if(total>0&&c.ncrClosed>=total){ c.ncrClosedDate=c.ncrClosedDate||new Date().toISOString().slice(0,10); }
+  if(total>0&&c.ncrClosed>=total){ c.ncrClosedDate=c.ncrClosedDate||toStr(new Date()); }
   const idx=data.ongoing.findIndex(x=>x.id===id);
   data.ongoing[idx]=c; saveLocal(data); syncSave(data).catch(()=>{}); renderOngoing();
 }
@@ -6791,7 +6833,7 @@ function saveDocUpload(){
     if(!data.clientDocs[_currentProfileId]) data.clientDocs[_currentProfileId]=[];
     data.clientDocs[_currentProfileId].push({
       id:'doc_'+Date.now(),type:docName,name:file.name,
-      date:new Date().toISOString().slice(0,10),
+      date:toStr(new Date()),
       dataUrl:ev.target.result
     });
     saveLocal(data); syncSave(data).catch(()=>{});
@@ -6869,7 +6911,7 @@ function markAsLost(clientId){
   const reason=prompt('Reason for loss:\n1) Did not renew\n2) Transferred to another CB\n3) Business closed\n4) Scope change\n5) Other\n\nType reason:','Did not renew');
   if(!reason) return;
   const notes=prompt('Any notes? (optional)','');
-  const lostRec={...client, id:client.id||client.clientId||('lost_'+Date.now()), dateLost:new Date().toISOString().slice(0,10), reason, notes:notes||''};
+  const lostRec={...client, id:client.id||client.clientId||('lost_'+Date.now()), dateLost:toStr(new Date()), reason, notes:notes||''};
   if(!data.lost) data.lost=[];
   data.lost.push(lostRec);
   data.certified=(data.certified||[]).filter(c=>(c.id||c.clientId)!==clientId);
@@ -7670,7 +7712,7 @@ async function toggleSimonPaid(id){
   const entry=data.simon.entries.find(e=>e.id===id);
   if(!entry) return;
   entry.paid=!entry.paid;
-  entry.paidDate=entry.paid?new Date().toISOString().slice(0,10):'';
+  entry.paidDate=entry.paid?toStr(new Date()):'';
   await syncSave(data);
   renderSimon();
 }
@@ -8576,4 +8618,4 @@ setInterval(()=>{
 </script>
 </body>
 </html>
-<!-- BUILD: 2026-10-02 19:38:25 -->
+<!-- BUILD: 2026-10-04 16:42:12 -->
