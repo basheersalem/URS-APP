@@ -7394,7 +7394,7 @@ const DOCS_SEED=[
   {id:'doc001',category:'Accreditation',name:'UKAS Accreditation Certificate',docNumber:'',issuer:'UKAS (UK Accreditation Service)',issueDate:'',expiryDate:'',notes:'Main UKAS accreditation — annual renewal',driveLink:''},
   {id:'doc002',category:'Accreditation',name:'UKAS Schedule of Accreditation',docNumber:'',issuer:'UKAS',issueDate:'',expiryDate:'',notes:'Lists all accredited standards and scopes',driveLink:''},
   // ── LEGAL / REGISTRATION ──
-  {id:'doc003',category:'Legal / Registration',name:'Commercial Registration (CR)',docNumber:'1488290',issuer:'Ministry of Commerce & Industry, Oman',issueDate:'',expiryDate:'2026-07-01',notes:'Annual renewal — Oman MOCI',driveLink:''},
+  {id:'doc003',category:'Legal / Registration',name:'Commercial Registration (CR)',docNumber:'1488290',issuer:'Ministry of Commerce & Industry, Oman',issueDate:'2023-05-01',expiryDate:'2029-05-22',notes:'3-year CR — Oman MOCI',driveLink:''},
   {id:'doc004',category:'Legal / Registration',name:'Business License (Dubai SAIF Zone)',docNumber:'L2170132',issuer:'SAIF Zone, Dubai',issueDate:'2026-04-22',expiryDate:'2027-04-21',notes:'Annual renewal',driveLink:''},
   {id:'doc005',category:'Legal / Registration',name:'OCCI Membership',docNumber:'',issuer:'Oman Chamber of Commerce & Industry',issueDate:'2025-06-03',expiryDate:'2027-06-04',notes:'Annual membership renewal',driveLink:''},
   // ── INSURANCE ──
@@ -8382,7 +8382,7 @@ async function openCertFolder(clientName){
     });
     if(resp.ok){ cdbToast('📂 Opened: '+clientName); return; }
   } catch(e){ /* server not running */ }
-  prompt('OneDrive folder path:', folderPath);
+  cdbToast('⚠️ Local server not running — double-click LAUNCH_URS_SERVER in URS Oman folder');
 }
 
 async function cdbOpenDestination(docId, clientName){
@@ -8618,4 +8618,4 @@ setInterval(()=>{
 </script>
 </body>
 </html>
-<!-- BUILD: 2026-10-05 13:11:54 -->
+<!-- BUILD: 2026-10-05 16:09:54 -->
